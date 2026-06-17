@@ -1,76 +1,79 @@
-# AWX Docker Self-Host Lab
+# AWX Image Builder
 
-This repo wraps AWX's upstream `devel` branch Docker Compose development environment for local self-hosting experiments.
+Private image-builder wrapper for AWX `devel`.
 
-AWX upstream still recommends the AWX Operator for real installs. Their Docker Compose path is development/test-oriented and `devel` is not stable, so treat this as a lab environment until it proves itself.
+This repo does not vendor AWX and does not keep an AWX checkout on the host. The repo-owned `Dockerfile` clones `ansible/awx` during Docker build, prepares the AWX development runtime in the image, and leaves deployment composition to the target environment.
 
-## Requirements
+`nexus01` owns the runtime compose file and should wire this image to its existing Postgres and Redis services.
 
-- Docker with the Compose plugin
-- Git
-- Make
-- Ansible (`ansible-playbook` and `ansible-galaxy`)
-- OpenSSL
+## Status
 
-## Quick Start
+Milestone 1 is private image building. Keep the repo and published image private until the licensing, SBOM, notices, and trademark review gates are complete.
+
+AWX upstream still recommends the AWX Operator for real installs. This image follows AWX's development-container model and is an experiment for self-hosted Docker use.
+
+## Build
 
 ```bash
 cp .env.example .env
-make doctor
-make bootstrap
-make render
-make dockerfile
-make up
-make admin-password
+make preflight
+make build
 ```
 
-AWX should be reachable at:
-
-```text
-http://localhost:8013
-```
-
-Username:
-
-```text
-admin
-```
-
-`make admin-password` prints the generated password unless `ADMIN_PASSWORD` was set before the first render/start.
-
-## Common Commands
+Useful overrides:
 
 ```bash
-make doctor          # Check local dependencies
-make bootstrap       # Clone upstream AWX devel into upstream/awx
-make update          # Fast-forward the upstream checkout
-make render          # Render AWX's generated compose/config sources
-make dockerfile      # Generate AWX's Dockerfile.dev in the external checkout
-make up              # Start detached using the published devel image
-make up-build        # Build the local awx_devel image, then start detached
-make logs            # Follow compose logs
-make ps              # Show compose service state
-make down            # Stop containers
-make clean-containers
+AWX_REF=devel IMAGE_NAME=ghcr.io/YOUR_ORG/awx-devel IMAGE_TAG=devel make build
+AWX_REF=<commit-sha> IMAGE_TAG=<commit-sha> make build
 ```
 
-Volume cleanup is intentionally guarded:
+Print the tag that will be built:
 
 ```bash
-CONFIRM=delete-awx-volumes make clean-volumes
+make print-tags
 ```
 
-## Layout
+Push is explicit:
 
-- `scripts/awx-compose.sh` is the control wrapper.
-- `${XDG_CACHE_HOME:-$HOME/.cache}/awx-docker/awx` is the default upstream checkout path.
-- `$AWX_DIR/Dockerfile.dev` is AWX's generated development image Dockerfile after `make dockerfile` or `make up-build`.
-- `$AWX_DIR/tools/ansible/roles/dockerfile/templates/Dockerfile.j2` is the upstream template that produces `Dockerfile.dev`.
-- `$AWX_DIR/tools/docker-compose/_sources/` contains AWX-generated compose files, secrets, and runtime config after `make render` or `make up`.
-- `AWX_DIR` must point outside this repo. The wrapper refuses nested AWX checkouts unless `ALLOW_AWX_DIR_INSIDE_REPO=true` is set explicitly.
+```bash
+PUSH=true make build
+```
 
-## Notes
+or:
 
-- The default path uses `ghcr.io/ansible/awx_devel:devel`. Run `make up-build` when you need an image built from the checked-out source.
-- AWX's generated compose uses fixed container and volume names prefixed with `tools_`, so avoid running multiple copies on the same Docker host.
-- The generated admin password and service secrets live under the ignored upstream checkout. Back them up before deleting volumes or `_sources` if you care about preserving the lab instance.
+```bash
+make push
+```
+
+## Commands
+
+```bash
+make doctor      # Check Docker and basic host dependencies
+make preflight   # Static checks that do not require Docker
+make build       # Build the private AWX image
+make push        # Push the already-built image tag
+make print-tags  # Print IMAGE_NAME:IMAGE_TAG
+```
+
+## Image Contract
+
+The image embeds AWX source at:
+
+```text
+/awx_devel
+```
+
+The image includes AWX's development startup entrypoint and supervisor config from upstream. Runtime config is intentionally not owned here yet. A deployment compose file must provide the AWX database, Redis/socket wiring, secrets, Django config, and any environment required by the target host.
+
+Current image labels include the wrapper revision and requested AWX repo/ref. The image also copies AWX's Apache-2.0 license and the resolved source revision into:
+
+```text
+/usr/share/licenses/awx-wrapper/
+```
+
+## Licensing
+
+Do not publish this image publicly until [docs/licensing.md](docs/licensing.md) is satisfied. AWX is Apache-2.0, but the complete image also includes OS packages, Python dependencies, npm assets, generated UI assets, and trademarks/branding that need review.
+
+This project is unofficial and is not affiliated with or endorsed by Red Hat, Ansible, or the AWX project.
+
