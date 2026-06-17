@@ -277,4 +277,4 @@ WORKDIR /awx_devel
 EXPOSE 8043 8013 8080 22
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["/bin/bash"]
+CMD ["/usr/bin/launch_awx.sh", "supervisord", "--pidfile=/tmp/supervisor_pid", "-n"]

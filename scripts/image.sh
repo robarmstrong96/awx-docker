@@ -216,11 +216,13 @@ preflight() {
   local fetch_pattern="git -C /awx-src fetch --depth 1 origin \"\${AWX_REF}\""
   local source_copy_pattern='COPY --from=ui-builder /tmp/src /awx_devel'
   local strip_git_pattern='RUN rm -rf /awx_devel/.git'
+  local cmd_pattern='CMD ["/usr/bin/launch_awx.sh", "supervisord", "--pidfile=/tmp/supervisor_pid", "-n"]'
 
   test -f "$DOCKERFILE"
   grep -Fq "$fetch_pattern" "$DOCKERFILE"
   grep -Fq "$source_copy_pattern" "$DOCKERFILE"
   grep -Fq "$strip_git_pattern" "$DOCKERFILE"
+  grep -Fq "$cmd_pattern" "$DOCKERFILE"
 
   if find "$ROOT_DIR" -path "$ROOT_DIR/.git" -prune -o -name .git -type d -print | grep -q .; then
     printf 'nested git checkout found under repo; image builds must clone AWX at Docker build time\n' >&2
@@ -288,6 +290,14 @@ verify_image() {
     return 1
   fi
 
+  local expected_cmd='["/usr/bin/launch_awx.sh","supervisord","--pidfile=/tmp/supervisor_pid","-n"]'
+  local image_cmd
+  image_cmd="$(docker image inspect --format '{{ json .Config.Cmd }}' "$ref")"
+  if [[ "$image_cmd" != "$expected_cmd" ]]; then
+    printf 'image default command mismatch: expected %s, got %s\n' "$expected_cmd" "$image_cmd" >&2
+    return 1
+  fi
+
   local image_revision
   image_revision="$(
     docker run --rm --entrypoint /bin/bash "$ref" -lc '
@@ -316,6 +326,7 @@ AWX_EXPECTED_REF=$expected_ref
 AWX_IMAGE_REF=$image_revision
 AWX_LABEL_REF=$label_revision
 AWX_GIT_METADATA=absent
+IMAGE_CMD=$image_cmd
 VERIFICATION_STATUS=passed
 EOF
 
@@ -327,6 +338,7 @@ EOF
 - Image AWX revision: \`$image_revision\`
 - Image label revision: \`$label_revision\`
 - Embedded AWX git metadata: absent
+- Default command: \`$image_cmd\`
 - Status: passed
 EOF
 
