@@ -43,7 +43,7 @@ The run proves the Docker-capable build gate only when all of the following are 
 
 - The workflow conclusion is `success`.
 - `build-metadata.env` records the requested AWX ref, resolved AWX SHA, image name/tag, wrapper revision, and platform.
-- `runner-diagnostics.env` records Docker and Buildx availability on the runner after the workflow's runner disk cleanup step.
+- `runner-diagnostics.env` records Docker and Buildx availability on the runner after the workflow's bounded runner disk cleanup step.
 - `docker-build.log` exists for the image build step.
 - `image-verification.env` contains `VERIFICATION_STATUS=passed`.
 - `image-verification.env` contains the same AWX SHA for `AWX_EXPECTED_REF`, `AWX_IMAGE_REF`, and `AWX_LABEL_REF`.

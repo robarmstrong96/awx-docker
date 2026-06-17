@@ -71,11 +71,16 @@ jobs:
         run: |
           set -euo pipefail
           df -h /
-          sudo rm -rf \
+          for path in \
             /opt/ghc \
             /opt/hostedtoolcache/CodeQL \
             /usr/local/lib/android \
-            /usr/share/dotnet
+            /usr/share/dotnet; do
+            if [ -e "$path" ]; then
+              echo "Removing $path"
+              sudo timeout 45s rm -rf "$path" || true
+            fi
+          done
           docker system prune -af || true
           df -h /
 
