@@ -13,7 +13,8 @@ fi
 
 AWX_UPSTREAM_URL="${AWX_UPSTREAM_URL:-https://github.com/ansible/awx.git}"
 AWX_BRANCH="${AWX_BRANCH:-devel}"
-AWX_DIR="${AWX_DIR:-upstream/awx}"
+DEFAULT_AWX_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/awx-docker/awx"
+AWX_DIR="${AWX_DIR:-$DEFAULT_AWX_DIR}"
 COMPOSE_TAG="${COMPOSE_TAG:-devel}"
 RECEPTOR_IMAGE="${RECEPTOR_IMAGE:-quay.io/ansible/receptor:devel}"
 CONTROL_PLANE_NODE_COUNT="${CONTROL_PLANE_NODE_COUNT:-1}"
@@ -22,6 +23,33 @@ EXECUTION_NODE_COUNT="${EXECUTION_NODE_COUNT:-0}"
 AWX_PATH="$AWX_DIR"
 if [[ "$AWX_PATH" != /* ]]; then
   AWX_PATH="$ROOT_DIR/$AWX_PATH"
+fi
+
+canonicalish_path() {
+  local path="$1"
+  local dir
+  local base
+
+  if command -v realpath >/dev/null 2>&1 && realpath -m "$path" >/dev/null 2>&1; then
+    realpath -m "$path"
+    return
+  fi
+
+  dir="$(dirname "$path")"
+  base="$(basename "$path")"
+  if [[ -d "$dir" ]]; then
+    printf '%s/%s\n' "$(cd "$dir" && pwd -P)" "$base"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+ROOT_REAL="$(canonicalish_path "$ROOT_DIR")"
+AWX_REAL="$(canonicalish_path "$AWX_PATH")"
+if [[ "$AWX_REAL/" == "$ROOT_REAL/"* && "${ALLOW_AWX_DIR_INSIDE_REPO:-false}" != "true" ]]; then
+  printf 'AWX_DIR must point outside this repo to avoid a nested git checkout: %s\n' "$AWX_PATH" >&2
+  printf 'Use AWX_DIR=%s or set ALLOW_AWX_DIR_INSIDE_REPO=true to override.\n' "$DEFAULT_AWX_DIR" >&2
+  exit 2
 fi
 
 COMPOSE_FILE="$AWX_PATH/tools/docker-compose/_sources/docker-compose.yml"

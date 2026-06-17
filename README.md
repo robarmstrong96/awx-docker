@@ -61,12 +61,12 @@ CONFIRM=delete-awx-volumes make clean-volumes
 ## Layout
 
 - `scripts/awx-compose.sh` is the control wrapper.
-- `upstream/awx` is the ignored upstream checkout.
-- `upstream/awx/tools/docker-compose/_sources/` contains AWX-generated compose files, secrets, and runtime config after `make render` or `make up`.
+- `${XDG_CACHE_HOME:-$HOME/.cache}/awx-docker/awx` is the default upstream checkout path.
+- `$AWX_DIR/tools/docker-compose/_sources/` contains AWX-generated compose files, secrets, and runtime config after `make render` or `make up`.
+- `AWX_DIR` must point outside this repo. The wrapper refuses nested AWX checkouts unless `ALLOW_AWX_DIR_INSIDE_REPO=true` is set explicitly.
 
 ## Notes
 
 - The default path uses `ghcr.io/ansible/awx_devel:devel`. Run `make up-build` when you need an image built from the checked-out source.
 - AWX's generated compose uses fixed container and volume names prefixed with `tools_`, so avoid running multiple copies on the same Docker host.
 - The generated admin password and service secrets live under the ignored upstream checkout. Back them up before deleting volumes or `_sources` if you care about preserving the lab instance.
-
