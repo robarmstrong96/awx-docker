@@ -27,6 +27,7 @@ Usage: scripts/image.sh <command>
 Commands:
   doctor       Check local image-builder dependencies
   preflight    Run static checks that do not require Docker
+  resolve-ref  Resolve AWX_REF to a concrete upstream commit SHA
   build        Build the AWX image locally
   push         Push the already-built image tag
   print-tags   Print the image reference that build/push uses
@@ -46,6 +47,40 @@ require_cmd() {
 
 image_ref() {
   printf '%s:%s\n' "$IMAGE_NAME" "$IMAGE_TAG"
+}
+
+resolve_ref() {
+  require_cmd git awk
+
+  if [[ "$AWX_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    printf '%s\n' "$AWX_REF"
+    return
+  fi
+
+  local refs
+  refs="$(git ls-remote "$AWX_REPO" \
+    "$AWX_REF" \
+    "refs/heads/$AWX_REF" \
+    "refs/tags/$AWX_REF" \
+    "refs/tags/$AWX_REF^{}")"
+
+  if [[ -z "$refs" ]]; then
+    printf 'unable to resolve AWX_REF=%s from %s\n' "$AWX_REF" "$AWX_REPO" >&2
+    return 1
+  fi
+
+  awk '
+    $2 ~ /\^\{\}$/ { peeled=$1 }
+    $2 ~ /^refs\/heads\// { head=$1 }
+    $2 ~ /^refs\/tags\// && $2 !~ /\^\{\}$/ { tag=$1 }
+    NR == 1 { first=$1 }
+    END {
+      if (peeled) print peeled;
+      else if (head) print head;
+      else if (tag) print tag;
+      else print first;
+    }
+  ' <<<"$refs"
 }
 
 doctor() {
@@ -85,17 +120,21 @@ preflight() {
 }
 
 docker_build_args() {
+  local resolved_ref="$1"
   local args=(
     buildx
     build
     --file "$DOCKERFILE"
     --platform "$PLATFORM"
     --build-arg "AWX_REPO=$AWX_REPO"
-    --build-arg "AWX_REF=$AWX_REF"
+    --build-arg "AWX_REF=$resolved_ref"
+    --build-arg "AWX_REQUESTED_REF=$AWX_REF"
+    --build-arg "AWX_SOURCE_REVISION=$resolved_ref"
     --build-arg "RECEPTOR_IMAGE=$RECEPTOR_IMAGE"
     --label "org.opencontainers.image.revision=$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
     --label "dev.awx-wrapper.awx.repo=$AWX_REPO"
     --label "dev.awx-wrapper.awx.ref=$AWX_REF"
+    --label "dev.awx-wrapper.awx.revision=$resolved_ref"
     --tag "$(image_ref)"
   )
 
@@ -116,9 +155,12 @@ docker_build_args() {
 build_image() {
   preflight
   doctor
+  local resolved_ref
+  resolved_ref="$(resolve_ref)"
+  printf 'resolved %s to %s\n' "$AWX_REF" "$resolved_ref"
   export DOCKER_BUILDKIT=1
   local -a args
-  mapfile -d '' -t args < <(docker_build_args)
+  mapfile -d '' -t args < <(docker_build_args "$resolved_ref")
   docker "${args[@]}"
 }
 
@@ -133,6 +175,7 @@ shift || true
 case "$cmd" in
   doctor) doctor ;;
   preflight) preflight ;;
+  resolve-ref) resolve_ref ;;
   build) build_image ;;
   push) push_image ;;
   print-tags) image_ref ;;

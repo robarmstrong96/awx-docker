@@ -2,6 +2,8 @@
 
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel
+ARG AWX_REQUESTED_REF=devel
+ARG AWX_SOURCE_REVISION=unknown
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
 
 FROM ${RECEPTOR_IMAGE} AS receptor
@@ -9,6 +11,7 @@ FROM ${RECEPTOR_IMAGE} AS receptor
 FROM quay.io/centos/centos:stream9 AS awx-source
 ARG AWX_REPO
 ARG AWX_REF
+ARG AWX_REQUESTED_REF
 
 RUN dnf -y update && \
     dnf -y install ca-certificates git-core && \
@@ -18,7 +21,8 @@ RUN git init /awx-src && \
     git -C /awx-src remote add origin "${AWX_REPO}" && \
     git -C /awx-src fetch --depth 1 origin "${AWX_REF}" && \
     git -C /awx-src checkout --detach FETCH_HEAD && \
-    git -C /awx-src rev-parse HEAD > /awx-src/.awx_source_revision
+    git -C /awx-src rev-parse HEAD > /awx-src/.awx_source_revision && \
+    printf '%s\n' "${AWX_REQUESTED_REF}" > /awx-src/.awx_requested_ref
 
 FROM quay.io/centos/centos:stream9 AS ui-builder
 
@@ -95,6 +99,8 @@ FROM quay.io/centos/centos:stream9
 
 ARG AWX_REPO
 ARG AWX_REF
+ARG AWX_REQUESTED_REF
+ARG AWX_SOURCE_REVISION
 ARG RECEPTOR_IMAGE
 
 ENV LANG=en_US.UTF-8
@@ -109,6 +115,9 @@ LABEL org.opencontainers.image.description="Private AWX image built by cloning u
 LABEL org.opencontainers.image.source="https://github.com/ansible/awx"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.vendor="unofficial"
+LABEL dev.awx-wrapper.awx.repo="${AWX_REPO}"
+LABEL dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}"
+LABEL dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}"
 
 USER root
 
@@ -181,7 +190,8 @@ COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
     cp /awx_devel/LICENSE.md /usr/share/licenses/awx-wrapper/AWX-LICENSE.md && \
-    cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION
+    cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION && \
+    cp /awx_devel/.awx_requested_ref /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 
 RUN ln -s /var/lib/awx/venv/awx/bin/awx-manage /usr/bin/awx-manage
 
