@@ -1,4 +1,4 @@
-.PHONY: doctor preflight public-hygiene resolve-ref write-metadata build verify-image push print-tags
+.PHONY: doctor preflight public-hygiene resolve-ref write-metadata write-runner-diagnostics build verify-image push print-tags
 
 doctor:
 	@./scripts/image.sh doctor
@@ -14,6 +14,9 @@ resolve-ref:
 
 write-metadata:
 	@./scripts/image.sh write-metadata
+
+write-runner-diagnostics:
+	@./scripts/image.sh write-runner-diagnostics
 
 build:
 	@./scripts/image.sh build

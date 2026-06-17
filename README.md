@@ -53,6 +53,7 @@ make public-hygiene # Check public repo docs for local/personal references
 make resolve-ref # Resolve AWX_REF to the exact upstream commit SHA
 make build       # Build the private AWX image
 make write-metadata # Write build metadata under build/evidence/ without building
+make write-runner-diagnostics # Write Docker runner diagnostics under build/evidence/
 make verify-image # Verify embedded AWX source revision and required files
 make push        # Push the already-built image tag
 make print-tags  # Print IMAGE_NAME:IMAGE_TAG
@@ -89,7 +90,7 @@ The manual GitHub workflow uploads that directory as `awx-image-build-evidence`.
 ## CI
 
 - `Static checks` runs automatically on push and pull request without Docker. It checks shell syntax, ShellCheck, Hadolint, workflow YAML parsing, static preflight, public hygiene, AWX ref resolution, and metadata generation.
-- `Private image` is manual. It performs the actual Docker build, verifies the built image, optionally pushes to GHCR, and uploads build evidence.
+- `Private image` is manual. It performs the actual Docker build, records runner diagnostics and build/verification logs, verifies the built image, optionally pushes to GHCR, and uploads build evidence.
 
 ## Licensing
 

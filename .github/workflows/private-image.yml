@@ -67,13 +67,20 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Write runner diagnostics
+        run: make write-runner-diagnostics
+
       - name: Build private image
+        timeout-minutes: 240
         env:
           AWX_REF: ${{ steps.awx.outputs.sha }}
           AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
           IMAGE_TAG: ${{ inputs.image_tag }}
-        run: make build
+        run: |
+          set -euo pipefail
+          mkdir -p build/evidence
+          make build 2>&1 | tee build/evidence/docker-build.log
 
       - name: Verify built image
         env:
@@ -81,7 +88,10 @@ jobs:
           AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
           IMAGE_TAG: ${{ inputs.image_tag }}
-        run: make verify-image
+        run: |
+          set -euo pipefail
+          mkdir -p build/evidence
+          make verify-image 2>&1 | tee build/evidence/image-verification.log
 
       - name: Push private image
         if: ${{ inputs.push == 'true' }}
@@ -91,6 +101,22 @@ jobs:
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: make push
+
+      - name: Publish evidence summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## AWX image build evidence"
+            for file in \
+              build/evidence/build-metadata.md \
+              build/evidence/runner-diagnostics.md \
+              build/evidence/image-verification.md; do
+              if [ -f "$file" ]; then
+                echo
+                cat "$file"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build evidence
         if: ${{ always() }}

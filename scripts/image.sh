@@ -31,6 +31,7 @@ Commands:
   preflight    Run static checks that do not require Docker
   resolve-ref  Resolve AWX_REF to a concrete upstream commit SHA
   write-metadata Write build metadata evidence without Docker
+  write-runner-diagnostics Write Docker runner diagnostics evidence
   build        Build the AWX image locally
   verify-image Verify the built image contents and metadata
   push         Push the already-built image tag
@@ -128,6 +129,67 @@ EOF
 EOF
 
   printf '%s\n' "$EVIDENCE_DIR/build-metadata.env"
+}
+
+write_runner_diagnostics() {
+  require_cmd awk df uname
+
+  local docker_cli=missing
+  local docker_cli_version=unavailable
+  local docker_server_version=unavailable
+  local buildx_version=unavailable
+  local buildx_details=unavailable
+
+  if command -v docker >/dev/null 2>&1; then
+    docker_cli=available
+    docker_cli_version="$(docker version --format '{{.Client.Version}}' 2>/dev/null || printf 'unavailable')"
+    docker_server_version="$(docker version --format '{{.Server.Version}}' 2>/dev/null || printf 'unavailable')"
+    buildx_details="$(docker buildx version 2>/dev/null || printf 'unavailable')"
+    buildx_version="$(awk '{ print $2 }' <<<"$buildx_details")"
+    if [[ -z "$buildx_version" ]]; then
+      buildx_version=unavailable
+    fi
+  fi
+
+  local kernel_name kernel_release kernel_machine
+  kernel_name="$(uname -s)"
+  kernel_release="$(uname -r)"
+  kernel_machine="$(uname -m)"
+  local root_disk root_total_kib root_available_kib root_used_percent
+  root_disk="$(df -h / | awk 'NR == 2 { print $2 " total, " $4 " available, " $5 " used" }')"
+  root_total_kib="$(df -Pk / | awk 'NR == 2 { print $2 }')"
+  root_available_kib="$(df -Pk / | awk 'NR == 2 { print $4 }')"
+  root_used_percent="$(df -Pk / | awk 'NR == 2 { print $5 }')"
+
+  mkdir -p "$EVIDENCE_DIR"
+  cat > "$EVIDENCE_DIR/runner-diagnostics.env" <<EOF
+RUNNER_OS=${RUNNER_OS:-unknown}
+RUNNER_ARCH=${RUNNER_ARCH:-unknown}
+KERNEL_NAME=$kernel_name
+KERNEL_RELEASE=$kernel_release
+KERNEL_MACHINE=$kernel_machine
+ROOT_DISK_TOTAL_KIB=$root_total_kib
+ROOT_DISK_AVAILABLE_KIB=$root_available_kib
+ROOT_DISK_USED_PERCENT=$root_used_percent
+DOCKER_CLI=$docker_cli
+DOCKER_CLI_VERSION=$docker_cli_version
+DOCKER_SERVER_VERSION=$docker_server_version
+DOCKER_BUILDX_VERSION=$buildx_version
+EOF
+
+  cat > "$EVIDENCE_DIR/runner-diagnostics.md" <<EOF
+# Runner Diagnostics
+
+- Runner OS: \`${RUNNER_OS:-unknown}\`
+- Runner arch: \`${RUNNER_ARCH:-unknown}\`
+- Kernel: \`$kernel_name $kernel_release $kernel_machine\`
+- Root disk: \`$root_disk\`
+- Docker CLI: \`$docker_cli_version\`
+- Docker server: \`$docker_server_version\`
+- Docker Buildx: \`$buildx_details\`
+EOF
+
+  printf '%s\n' "$EVIDENCE_DIR/runner-diagnostics.env"
 }
 
 doctor() {
@@ -284,6 +346,7 @@ case "$cmd" in
   preflight) preflight ;;
   resolve-ref) resolve_ref ;;
   write-metadata) write_metadata ;;
+  write-runner-diagnostics) write_runner_diagnostics ;;
   build) build_image ;;
   verify-image) verify_image ;;
   push) push_image ;;
