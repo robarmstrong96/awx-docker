@@ -1,0 +1,57 @@
+name: Static checks
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out wrapper
+        uses: actions/checkout@v4
+
+      - name: Install shell tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep shellcheck
+
+      - name: Shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+
+      - name: Parse workflow YAML
+        run: |
+          ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |path| YAML.load_file(path) }'
+
+      - name: Static preflight
+        run: make preflight
+
+      - name: Public hygiene
+        run: make public-hygiene
+
+      - name: Resolve upstream AWX ref
+        run: make resolve-ref
+
+      - name: Write build metadata
+        run: make write-metadata
+
+      - name: Upload static evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: awx-static-build-metadata
+          path: build/evidence/
+          if-no-files-found: error
+

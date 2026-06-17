@@ -15,6 +15,7 @@ This project must stay private until the public-release gates below are complete
 - Confirm the private image can be rebuilt reproducibly from `AWX_REF`.
 - Run `make verify-image` against every candidate image before private promotion or public release review.
 - Retain the `awx-image-build-evidence` workflow artifact for every private candidate build.
+- Treat `awx-static-build-metadata` as pre-build evidence only; it does not prove image contents.
 - Add a manual approval gate before any public package visibility change.
 
 ## Current Private Position

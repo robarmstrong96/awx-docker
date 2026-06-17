@@ -84,6 +84,11 @@ build/evidence/
 
 The manual GitHub workflow uploads that directory as `awx-image-build-evidence`.
 
+## CI
+
+- `Static checks` runs automatically on push and pull request without Docker. It checks shell syntax, ShellCheck, Hadolint, workflow YAML parsing, static preflight, public hygiene, AWX ref resolution, and metadata generation.
+- `Private image` is manual. It performs the actual Docker build, verifies the built image, optionally pushes to GHCR, and uploads build evidence.
+
 ## Licensing
 
 Do not publish this image publicly until [docs/licensing.md](docs/licensing.md) is satisfied. AWX is Apache-2.0, but the complete image also includes OS packages, Python dependencies, npm assets, generated UI assets, and trademarks/branding that need review.
