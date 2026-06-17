@@ -2,5 +2,5 @@
 .github
 .env
 docs
+build
 *.log
-

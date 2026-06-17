@@ -1,4 +1,4 @@
-.PHONY: doctor preflight resolve-ref build verify-image push print-tags
+.PHONY: doctor preflight resolve-ref write-metadata build verify-image push print-tags
 
 doctor:
 	@./scripts/image.sh doctor
@@ -8,6 +8,9 @@ preflight:
 
 resolve-ref:
 	@./scripts/image.sh resolve-ref
+
+write-metadata:
+	@./scripts/image.sh write-metadata
 
 build:
 	@./scripts/image.sh build

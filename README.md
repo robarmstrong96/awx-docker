@@ -18,6 +18,7 @@ AWX upstream still recommends the AWX Operator for real installs. This image fol
 cp .env.example .env
 make preflight
 make resolve-ref
+make write-metadata
 make build
 make verify-image
 ```
@@ -49,6 +50,7 @@ make push
 make doctor      # Check Docker and basic host dependencies
 make preflight   # Static checks that do not require Docker
 make resolve-ref # Resolve AWX_REF to the exact upstream commit SHA
+make write-metadata # Write build metadata under build/evidence/
 make build       # Build the private AWX image
 make verify-image # Verify embedded AWX source revision and required files
 make push        # Push the already-built image tag
@@ -72,6 +74,14 @@ Current image labels include the wrapper revision and requested AWX repo/ref. Th
 ```text
 /usr/share/licenses/awx-wrapper/
 ```
+
+Local and CI builds write compact audit evidence under:
+
+```text
+build/evidence/
+```
+
+The manual GitHub workflow uploads that directory as `awx-image-build-evidence`.
 
 ## Licensing
 

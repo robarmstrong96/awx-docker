@@ -19,6 +19,7 @@ IMAGE_NAME="${IMAGE_NAME:-awx-devel}"
 IMAGE_TAG="${IMAGE_TAG:-${AWX_REF//\//-}}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 DOCKERFILE="${DOCKERFILE:-$ROOT_DIR/Dockerfile}"
+EVIDENCE_DIR="${EVIDENCE_DIR:-$ROOT_DIR/build/evidence}"
 
 usage() {
   cat <<'USAGE'
@@ -28,6 +29,7 @@ Commands:
   doctor       Check local image-builder dependencies
   preflight    Run static checks that do not require Docker
   resolve-ref  Resolve AWX_REF to a concrete upstream commit SHA
+  write-metadata Write build metadata evidence without Docker
   build        Build the AWX image locally
   verify-image Verify the built image contents and metadata
   push         Push the already-built image tag
@@ -48,6 +50,10 @@ require_cmd() {
 
 image_ref() {
   printf '%s:%s\n' "$IMAGE_NAME" "$IMAGE_TAG"
+}
+
+wrapper_revision() {
+  git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown
 }
 
 resolve_ref() {
@@ -82,6 +88,41 @@ resolve_ref() {
       else print first;
     }
   ' <<<"$refs"
+}
+
+write_metadata() {
+  require_cmd git awk
+  local resolved_ref
+  resolved_ref="$(resolve_ref)"
+  local wrapper_ref
+  wrapper_ref="$(wrapper_revision)"
+  local ref
+  ref="$(image_ref)"
+
+  mkdir -p "$EVIDENCE_DIR"
+  cat > "$EVIDENCE_DIR/build-metadata.env" <<EOF
+IMAGE_REF=$ref
+IMAGE_NAME=$IMAGE_NAME
+IMAGE_TAG=$IMAGE_TAG
+AWX_REPO=$AWX_REPO
+AWX_REQUESTED_REF=$AWX_REQUESTED_REF
+AWX_RESOLVED_REF=$resolved_ref
+WRAPPER_REVISION=$wrapper_ref
+PLATFORM=$PLATFORM
+EOF
+
+  cat > "$EVIDENCE_DIR/build-metadata.md" <<EOF
+# AWX Image Build Metadata
+
+- Image: \`$ref\`
+- AWX repo: \`$AWX_REPO\`
+- AWX requested ref: \`$AWX_REQUESTED_REF\`
+- AWX resolved ref: \`$resolved_ref\`
+- Wrapper revision: \`$wrapper_ref\`
+- Platform: \`$PLATFORM\`
+EOF
+
+  printf '%s\n' "$EVIDENCE_DIR/build-metadata.env"
 }
 
 doctor() {
@@ -155,6 +196,7 @@ build_image() {
   local resolved_ref
   resolved_ref="$(resolve_ref)"
   printf 'resolved %s to %s\n' "$AWX_REF" "$resolved_ref"
+  write_metadata >/dev/null
   export DOCKER_BUILDKIT=1
   local -a args
   mapfile -d '' -t args < <(docker_build_args "$resolved_ref")
@@ -197,6 +239,25 @@ verify_image() {
     return 1
   fi
 
+  mkdir -p "$EVIDENCE_DIR"
+  cat > "$EVIDENCE_DIR/image-verification.env" <<EOF
+IMAGE_REF=$ref
+AWX_EXPECTED_REF=$expected_ref
+AWX_IMAGE_REF=$image_revision
+AWX_LABEL_REF=$label_revision
+VERIFICATION_STATUS=passed
+EOF
+
+  cat > "$EVIDENCE_DIR/image-verification.md" <<EOF
+# AWX Image Verification
+
+- Image: \`$ref\`
+- Expected AWX revision: \`$expected_ref\`
+- Image AWX revision: \`$image_revision\`
+- Image label revision: \`$label_revision\`
+- Status: passed
+EOF
+
   printf 'verify-image: ok (%s contains AWX %s)\n' "$ref" "$expected_ref"
 }
 
@@ -212,6 +273,7 @@ case "$cmd" in
   doctor) doctor ;;
   preflight) preflight ;;
   resolve-ref) resolve_ref ;;
+  write-metadata) write_metadata ;;
   build) build_image ;;
   verify-image) verify_image ;;
   push) push_image ;;

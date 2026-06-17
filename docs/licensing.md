@@ -14,6 +14,7 @@ This project must stay private until the public-release gates below are complete
 - Add OCI labels for wrapper source, wrapper revision, upstream AWX repo, upstream AWX ref, and resolved upstream AWX SHA.
 - Confirm the private image can be rebuilt reproducibly from `AWX_REF`.
 - Run `make verify-image` against every candidate image before private promotion or public release review.
+- Retain the `awx-image-build-evidence` workflow artifact for every private candidate build.
 - Add a manual approval gate before any public package visibility change.
 
 ## Current Private Position
