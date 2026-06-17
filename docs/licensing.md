@@ -20,6 +20,6 @@ This project must stay private until the public-release gates below are complete
 
 ## Current Private Position
 
-The current image builder is intended for private testing only. It clones AWX during Docker build and records the resolved AWX revision in `/usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION` inside the image.
+The current image builder is intended for private testing only. It clones AWX during Docker build, strips upstream `.git` metadata from the final image, and records the resolved AWX revision in `/usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION` inside the image.
 
 The current repository and image naming must describe this as an unofficial builder/image. Do not use language that suggests endorsement by Red Hat, Ansible, or AWX.

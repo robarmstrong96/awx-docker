@@ -188,6 +188,8 @@ COPY --from=builder /var/lib/awx /var/lib/awx
 COPY --from=ui-builder /tmp/src /awx_devel
 COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 
+RUN rm -rf /awx_devel/.git
+
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
     cp /awx_devel/LICENSE.md /usr/share/licenses/awx-wrapper/AWX-LICENSE.md && \
     cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION && \

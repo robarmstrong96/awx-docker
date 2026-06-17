@@ -153,10 +153,12 @@ preflight() {
   require_cmd awk sed git
   local fetch_pattern="git -C /awx-src fetch --depth 1 origin \"\${AWX_REF}\""
   local source_copy_pattern='COPY --from=ui-builder /tmp/src /awx_devel'
+  local strip_git_pattern='RUN rm -rf /awx_devel/.git'
 
   test -f "$DOCKERFILE"
   grep -Fq "$fetch_pattern" "$DOCKERFILE"
   grep -Fq "$source_copy_pattern" "$DOCKERFILE"
+  grep -Fq "$strip_git_pattern" "$DOCKERFILE"
 
   if find "$ROOT_DIR" -path "$ROOT_DIR/.git" -prune -o -name .git -type d -print | grep -q .; then
     printf 'nested git checkout found under repo; image builds must clone AWX at Docker build time\n' >&2
@@ -230,6 +232,7 @@ verify_image() {
       set -euo pipefail
       test -f /awx_devel/manage.py
       test -f /awx_devel/LICENSE.md
+      test ! -e /awx_devel/.git
       test -x /entrypoint.sh
       test -f /etc/supervisord.conf
       test -x /usr/local/bin/awx-manage
@@ -250,6 +253,7 @@ IMAGE_REF=$ref
 AWX_EXPECTED_REF=$expected_ref
 AWX_IMAGE_REF=$image_revision
 AWX_LABEL_REF=$label_revision
+AWX_GIT_METADATA=absent
 VERIFICATION_STATUS=passed
 EOF
 
@@ -260,6 +264,7 @@ EOF
 - Expected AWX revision: \`$expected_ref\`
 - Image AWX revision: \`$image_revision\`
 - Image label revision: \`$label_revision\`
+- Embedded AWX git metadata: absent
 - Status: passed
 EOF
 

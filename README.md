@@ -66,6 +66,8 @@ The image embeds AWX source at:
 /awx_devel
 ```
 
+The embedded source tree keeps wrapper-generated revision marker files, but the upstream `.git` directory is stripped from the final image.
+
 The image includes AWX's development startup entrypoint and supervisor config from upstream. Runtime config is intentionally not owned here yet. A deployment compose file must provide the AWX database, Redis/socket wiring, secrets, Django config, and any environment required by the target host.
 
 See [docs/runtime-contract.md](docs/runtime-contract.md) for the handoff contract. That document is intentionally not a compose file.
