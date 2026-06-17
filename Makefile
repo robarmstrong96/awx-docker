@@ -1,4 +1,4 @@
-.PHONY: doctor bootstrap update render build up up-build down logs ps admin-password compose clean-containers clean-volumes
+.PHONY: doctor bootstrap update render dockerfile build up up-build down logs ps admin-password compose clean-containers clean-volumes
 
 doctor:
 	@./scripts/awx-compose.sh doctor
@@ -11,6 +11,9 @@ update:
 
 render:
 	@./scripts/awx-compose.sh render
+
+dockerfile:
+	@./scripts/awx-compose.sh dockerfile
 
 build:
 	@./scripts/awx-compose.sh build

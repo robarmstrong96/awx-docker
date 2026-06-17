@@ -19,6 +19,7 @@ cp .env.example .env
 make doctor
 make bootstrap
 make render
+make dockerfile
 make up
 make admin-password
 ```
@@ -44,6 +45,7 @@ make doctor          # Check local dependencies
 make bootstrap       # Clone upstream AWX devel into upstream/awx
 make update          # Fast-forward the upstream checkout
 make render          # Render AWX's generated compose/config sources
+make dockerfile      # Generate AWX's Dockerfile.dev in the external checkout
 make up              # Start detached using the published devel image
 make up-build        # Build the local awx_devel image, then start detached
 make logs            # Follow compose logs
@@ -62,6 +64,8 @@ CONFIRM=delete-awx-volumes make clean-volumes
 
 - `scripts/awx-compose.sh` is the control wrapper.
 - `${XDG_CACHE_HOME:-$HOME/.cache}/awx-docker/awx` is the default upstream checkout path.
+- `$AWX_DIR/Dockerfile.dev` is AWX's generated development image Dockerfile after `make dockerfile` or `make up-build`.
+- `$AWX_DIR/tools/ansible/roles/dockerfile/templates/Dockerfile.j2` is the upstream template that produces `Dockerfile.dev`.
 - `$AWX_DIR/tools/docker-compose/_sources/` contains AWX-generated compose files, secrets, and runtime config after `make render` or `make up`.
 - `AWX_DIR` must point outside this repo. The wrapper refuses nested AWX checkouts unless `ALLOW_AWX_DIR_INSIDE_REPO=true` is set explicitly.
 

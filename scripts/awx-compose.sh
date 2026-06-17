@@ -63,6 +63,7 @@ Commands:
   bootstrap         Clone upstream AWX devel if needed
   update            Fast-forward the upstream AWX checkout
   render            Render AWX compose/config sources
+  dockerfile        Generate AWX Dockerfile.dev in the external checkout
   build             Build awx_devel from the upstream checkout
   up                Start AWX detached by default
   up-build          Build awx_devel, then start AWX
@@ -183,6 +184,11 @@ render() {
   awx_make docker-compose-sources
 }
 
+dockerfile() {
+  awx_make Dockerfile.dev
+  printf '%s\n' "$AWX_PATH/Dockerfile.dev"
+}
+
 build() {
   require_docker
   awx_make docker-compose-build
@@ -238,6 +244,7 @@ case "$cmd" in
   bootstrap) bootstrap ;;
   update) update ;;
   render) render ;;
+  dockerfile) dockerfile ;;
   build) build ;;
   up) up ;;
   up-build) up_build ;;
