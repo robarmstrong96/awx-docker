@@ -109,6 +109,7 @@ ENV LC_ALL=en_US.UTF-8
 ENV AWX_LOGGING_MODE=stdout
 ENV HOME=/var/lib/awx
 ENV PATH="/var/lib/awx/venv/awx/bin/:${PATH}"
+ENV SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}"
 
 LABEL org.opencontainers.image.title="Unofficial AWX development image"
@@ -223,9 +224,16 @@ COPY --from=awx-source /awx-src/tools/docker-compose/supervisor.conf /etc/superv
 COPY --from=awx-source /awx-src/tools/scripts/config-watcher /usr/bin/config-watcher
 COPY scripts/runtime-entrypoint.sh /usr/local/bin/awx-wrapper-entrypoint
 
-RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}" \
-      /var/lib/awx/venv/awx/bin/pip install --no-deps --no-build-isolation -e /awx_devel && \
-    echo /awx_devel > /var/lib/awx/venv/awx/lib/python3.12/site-packages/awx.egg-link && \
+RUN awx_version="0.0.dev0+g${AWX_SOURCE_REVISION}" && \
+    site_packages="/var/lib/awx/venv/awx/lib/python3.12/site-packages" && \
+    dist_info="${site_packages}/awx-${awx_version}.dist-info" && \
+    install -d -m 0755 "${dist_info}" && \
+    printf 'Metadata-Version: 2.1\nName: awx\nVersion: %s\n' "${awx_version}" > "${dist_info}/METADATA" && \
+    printf '[console_scripts]\nawx-manage = awx:manage\n' > "${dist_info}/entry_points.txt" && \
+    printf 'awx\n' > "${dist_info}/top_level.txt" && \
+    printf 'awx-docker\n' > "${dist_info}/INSTALLER" && \
+    touch "${dist_info}/RECORD" && \
+    echo /awx_devel > "${site_packages}/awx.egg-link" && \
     ln -sf /awx_devel/tools/docker-compose/awx-manage /usr/local/bin/awx-manage && \
     ln -sf /awx_devel/tools/scripts/awx-python /usr/bin/awx-python && \
     ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery && \
