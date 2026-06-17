@@ -111,7 +111,7 @@ ENV HOME=/var/lib/awx
 ENV PATH="/var/lib/awx/venv/awx/bin/:${PATH}"
 
 LABEL org.opencontainers.image.title="Unofficial AWX development image"
-LABEL org.opencontainers.image.description="Private AWX image built by cloning upstream AWX during Docker build"
+LABEL org.opencontainers.image.description="AWX image built by cloning upstream AWX during Docker build"
 LABEL org.opencontainers.image.source="https://github.com/ansible/awx"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.vendor="unofficial"

@@ -1,4 +1,4 @@
-name: Private image
+name: Image build
 
 "on":
   workflow_dispatch:
@@ -12,7 +12,7 @@ name: Private image
         required: true
         default: devel
       publish_image:
-        description: Push to GHCR. Keep false until private package settings are confirmed.
+        description: Push to GHCR.
         required: true
         default: "false"
         type: choice
@@ -87,7 +87,7 @@ jobs:
       - name: Write runner diagnostics
         run: make write-runner-diagnostics
 
-      - name: Build private image
+      - name: Build image
         timeout-minutes: 240
         env:
           AWX_REF: ${{ steps.awx.outputs.sha }}
@@ -110,7 +110,7 @@ jobs:
           mkdir -p build/evidence
           make verify-image 2>&1 | tee build/evidence/image-verification.log
 
-      - name: Push private image
+      - name: Push image
         if: ${{ inputs.publish_image == 'true' }}
         env:
           AWX_REF: ${{ steps.awx.outputs.sha }}
