@@ -1,6 +1,6 @@
 name: Private image
 
-on:
+"on":
   workflow_dispatch:
     inputs:
       awx_ref:
@@ -11,7 +11,7 @@ on:
         description: Image tag to publish
         required: true
         default: devel
-      push:
+      publish_image:
         description: Push to GHCR. Keep false until private package settings are confirmed.
         required: true
         default: "false"
@@ -57,7 +57,7 @@ jobs:
         run: make write-metadata
 
       - name: Log in to GHCR
-        if: ${{ inputs.push == 'true' }}
+        if: ${{ inputs.publish_image == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -106,7 +106,7 @@ jobs:
           make verify-image 2>&1 | tee build/evidence/image-verification.log
 
       - name: Push private image
-        if: ${{ inputs.push == 'true' }}
+        if: ${{ inputs.publish_image == 'true' }}
         env:
           AWX_REF: ${{ steps.awx.outputs.sha }}
           AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
@@ -132,8 +132,10 @@ jobs:
 
       - name: Upload build evidence
         if: ${{ always() }}
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: awx-image-build-evidence
           path: build/evidence/
           if-no-files-found: ignore
+          retention-days: 1

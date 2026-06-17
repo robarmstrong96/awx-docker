@@ -1,6 +1,6 @@
 name: Static checks
 
-on:
+"on":
   pull_request:
   push:
   workflow_dispatch:
@@ -49,9 +49,10 @@ jobs:
         run: make write-metadata
 
       - name: Upload static evidence
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: awx-static-build-metadata
           path: build/evidence/
           if-no-files-found: error
-
+          retention-days: 1

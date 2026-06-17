@@ -14,14 +14,14 @@ The repository can be made public later, but keep the image package private unti
 
 ## Run Without Pushing
 
-Start with `push=false` so the runner builds and verifies the image without publishing it:
+Start with `publish_image=false` so the runner builds and verifies the image without publishing it:
 
 ```bash
 gh workflow run "Private image" \
   --ref development \
   -f awx_ref=devel \
   -f image_tag=devel \
-  -f push=false
+  -f publish_image=false
 ```
 
 Watch the latest run:
@@ -53,14 +53,14 @@ Do not treat static workflow artifacts as image-build proof. They are useful pre
 
 ## Private Push
 
-After a no-push run succeeds and package visibility is confirmed private, rerun with `push=true`:
+After a no-push run succeeds and package visibility is confirmed private, rerun with `publish_image=true`:
 
 ```bash
 gh workflow run "Private image" \
   --ref development \
   -f awx_ref=devel \
   -f image_tag=devel \
-  -f push=true
+  -f publish_image=true
 ```
 
 The workflow verifies the local image before the push step. Public package visibility remains blocked until the licensing gate is complete.

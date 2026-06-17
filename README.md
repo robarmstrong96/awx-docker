@@ -90,7 +90,7 @@ The manual GitHub workflow uploads that directory as `awx-image-build-evidence`.
 ## CI
 
 - `Static checks` runs automatically on push and pull request without Docker. It checks shell syntax, ShellCheck, Hadolint, workflow YAML parsing, static preflight, public hygiene, AWX ref resolution, and metadata generation.
-- `Private image` is manual. It performs the actual Docker build, records runner diagnostics and build/verification logs, verifies the built image, optionally pushes to GHCR, and uploads build evidence.
+- `Private image` is manual. It performs the actual Docker build, records runner diagnostics and build/verification logs, verifies the built image, optionally pushes to GHCR, and uploads build evidence when artifact quota allows.
 
 See [docs/private-image-workflow.md](docs/private-image-workflow.md) for the manual workflow runbook and the evidence required to close the Docker-capable build gate.
 
