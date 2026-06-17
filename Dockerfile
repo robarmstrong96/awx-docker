@@ -234,6 +234,7 @@ RUN awx_version="0.0.dev0+g${AWX_SOURCE_REVISION}" && \
     printf 'awx-docker\n' > "${dist_info}/INSTALLER" && \
     touch "${dist_info}/RECORD" && \
     echo /awx_devel > "${site_packages}/awx.egg-link" && \
+    echo /awx_devel > "${site_packages}/awx-devel.pth" && \
     ln -sf /awx_devel/tools/docker-compose/awx-manage /usr/local/bin/awx-manage && \
     ln -sf /awx_devel/tools/scripts/awx-python /usr/bin/awx-python && \
     ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery && \

@@ -323,6 +323,8 @@ verify_image() {
 from importlib.metadata import distribution
 dist = distribution("awx")
 assert any(ep.group == "console_scripts" and ep.name == "awx-manage" for ep in dist.entry_points)
+import awx
+assert awx.__version__
 PY
       test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
       test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
