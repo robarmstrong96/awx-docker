@@ -109,6 +109,7 @@ ENV LC_ALL=en_US.UTF-8
 ENV AWX_LOGGING_MODE=stdout
 ENV HOME=/var/lib/awx
 ENV PATH="/var/lib/awx/venv/awx/bin/:${PATH}"
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}"
 
 LABEL org.opencontainers.image.title="Unofficial AWX development image"
 LABEL org.opencontainers.image.description="AWX image built by cloning upstream AWX during Docker build"
@@ -220,12 +221,15 @@ COPY --from=awx-source /awx-src/tools/docker-compose/bootstrap_development.sh /u
 COPY --from=awx-source /awx-src/tools/docker-compose/entrypoint.sh /entrypoint.sh
 COPY --from=awx-source /awx-src/tools/docker-compose/supervisor.conf /etc/supervisord.conf
 COPY --from=awx-source /awx-src/tools/scripts/config-watcher /usr/bin/config-watcher
+COPY scripts/runtime-entrypoint.sh /usr/local/bin/awx-wrapper-entrypoint
 
-RUN echo /awx_devel > /var/lib/awx/venv/awx/lib/python3.12/site-packages/awx.egg-link && \
-    echo /awx_devel > /var/lib/awx/venv/awx/lib/python3.12/site-packages/awx.pth && \
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}" \
+      /var/lib/awx/venv/awx/bin/pip install --no-deps --no-build-isolation -e /awx_devel && \
+    echo /awx_devel > /var/lib/awx/venv/awx/lib/python3.12/site-packages/awx.egg-link && \
     ln -sf /awx_devel/tools/docker-compose/awx-manage /usr/local/bin/awx-manage && \
     ln -sf /awx_devel/tools/scripts/awx-python /usr/bin/awx-python && \
-    ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery
+    ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery && \
+    chmod 0755 /usr/local/bin/awx-wrapper-entrypoint
 
 RUN for dir in \
       /var/lib/awx \
@@ -276,5 +280,5 @@ WORKDIR /awx_devel
 
 EXPOSE 8043 8013 8080 22
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/awx-wrapper-entrypoint"]
 CMD ["/usr/bin/launch_awx.sh", "supervisord", "--pidfile=/tmp/supervisor_pid", "-n"]
