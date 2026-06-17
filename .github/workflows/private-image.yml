@@ -39,6 +39,9 @@ jobs:
       - name: Run static preflight
         run: make preflight
 
+      - name: Check public hygiene
+        run: make public-hygiene
+
       - name: Resolve AWX ref
         id: awx
         run: |

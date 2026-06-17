@@ -17,6 +17,7 @@ AWX upstream still recommends the AWX Operator for real installs. This image fol
 ```bash
 cp .env.example .env
 make preflight
+make public-hygiene
 make resolve-ref
 make build
 make verify-image
@@ -48,6 +49,7 @@ make push
 ```bash
 make doctor      # Check Docker and basic host dependencies
 make preflight   # Static checks that do not require Docker
+make public-hygiene # Check public repo docs for local/personal references
 make resolve-ref # Resolve AWX_REF to the exact upstream commit SHA
 make build       # Build the private AWX image
 make write-metadata # Write build metadata under build/evidence/ without building
