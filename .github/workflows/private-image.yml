@@ -48,7 +48,9 @@ jobs:
 
       - name: Write build metadata
         env:
+          AWX_REF: ${{ steps.awx.outputs.sha }}
           AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
+          AWX_RESOLVED_REF: ${{ steps.awx.outputs.sha }}
         run: make write-metadata
 
       - name: Log in to GHCR
@@ -73,6 +75,7 @@ jobs:
       - name: Verify built image
         env:
           AWX_REF: ${{ steps.awx.outputs.sha }}
+          AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: make verify-image
@@ -80,6 +83,8 @@ jobs:
       - name: Push private image
         if: ${{ inputs.push == 'true' }}
         env:
+          AWX_REF: ${{ steps.awx.outputs.sha }}
+          AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: make push

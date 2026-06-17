@@ -18,7 +18,6 @@ AWX upstream still recommends the AWX Operator for real installs. This image fol
 cp .env.example .env
 make preflight
 make resolve-ref
-make write-metadata
 make build
 make verify-image
 ```
@@ -50,8 +49,8 @@ make push
 make doctor      # Check Docker and basic host dependencies
 make preflight   # Static checks that do not require Docker
 make resolve-ref # Resolve AWX_REF to the exact upstream commit SHA
-make write-metadata # Write build metadata under build/evidence/
 make build       # Build the private AWX image
+make write-metadata # Write build metadata under build/evidence/ without building
 make verify-image # Verify embedded AWX source revision and required files
 make push        # Push the already-built image tag
 make print-tags  # Print IMAGE_NAME:IMAGE_TAG

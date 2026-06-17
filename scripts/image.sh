@@ -14,6 +14,7 @@ fi
 AWX_REPO="${AWX_REPO:-https://github.com/ansible/awx.git}"
 AWX_REF="${AWX_REF:-devel}"
 AWX_REQUESTED_REF="${AWX_REQUESTED_REF:-$AWX_REF}"
+AWX_RESOLVED_REF="${AWX_RESOLVED_REF:-}"
 RECEPTOR_IMAGE="${RECEPTOR_IMAGE:-quay.io/ansible/receptor:devel}"
 IMAGE_NAME="${IMAGE_NAME:-awx-devel}"
 IMAGE_TAG="${IMAGE_TAG:-${AWX_REF//\//-}}"
@@ -93,7 +94,11 @@ resolve_ref() {
 write_metadata() {
   require_cmd git awk
   local resolved_ref
-  resolved_ref="$(resolve_ref)"
+  if [[ -n "$AWX_RESOLVED_REF" ]]; then
+    resolved_ref="$AWX_RESOLVED_REF"
+  else
+    resolved_ref="$(resolve_ref)"
+  fi
   local wrapper_ref
   wrapper_ref="$(wrapper_revision)"
   local ref
@@ -196,7 +201,7 @@ build_image() {
   local resolved_ref
   resolved_ref="$(resolve_ref)"
   printf 'resolved %s to %s\n' "$AWX_REF" "$resolved_ref"
-  write_metadata >/dev/null
+  AWX_RESOLVED_REF="$resolved_ref" write_metadata >/dev/null
   export DOCKER_BUILDKIT=1
   local -a args
   mapfile -d '' -t args < <(docker_build_args "$resolved_ref")
