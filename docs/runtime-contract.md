@@ -12,6 +12,8 @@ ghcr.io/<private-owner>/awx-devel:<tag>
 
 Prefer immutable tags based on the resolved AWX commit SHA once the build is verified.
 
+Run `make verify-image` in this repository before handing an image tag to a deployment environment.
+
 ## Expected Container Shape
 
 The image embeds AWX source at:
@@ -67,4 +69,3 @@ The image exposes the same development ports as upstream:
 - Which persistent volumes are needed for projects, receptor runtime files, and AWX-local container storage.
 
 These questions belong to the deployment compose/runtime milestone, not the private image-builder milestone.
-

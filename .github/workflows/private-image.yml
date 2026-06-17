@@ -58,22 +58,23 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build private image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64
-          push: ${{ inputs.push == 'true' }}
-          tags: ghcr.io/${{ github.repository_owner }}/awx-devel:${{ inputs.image_tag }}
-          build-args: |
-            AWX_REF=${{ steps.awx.outputs.sha }}
-            AWX_REQUESTED_REF=${{ inputs.awx_ref }}
-            AWX_SOURCE_REVISION=${{ steps.awx.outputs.sha }}
-            AWX_REPO=https://github.com/ansible/awx.git
-            RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            dev.awx-wrapper.awx.repo=https://github.com/ansible/awx.git
-            dev.awx-wrapper.awx.ref=${{ inputs.awx_ref }}
-            dev.awx-wrapper.awx.revision=${{ steps.awx.outputs.sha }}
+        env:
+          AWX_REF: ${{ steps.awx.outputs.sha }}
+          AWX_REQUESTED_REF: ${{ inputs.awx_ref }}
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: make build
+
+      - name: Verify built image
+        env:
+          AWX_REF: ${{ steps.awx.outputs.sha }}
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: make verify-image
+
+      - name: Push private image
+        if: ${{ inputs.push == 'true' }}
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/awx-devel
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: make push

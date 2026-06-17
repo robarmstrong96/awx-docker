@@ -19,6 +19,7 @@ cp .env.example .env
 make preflight
 make resolve-ref
 make build
+make verify-image
 ```
 
 Useful overrides:
@@ -34,15 +35,11 @@ Print the tag that will be built:
 make print-tags
 ```
 
-Push is explicit:
+Push is explicit and verifies the local image before publishing:
 
 ```bash
-PUSH=true make build
-```
-
-or:
-
-```bash
+make build
+make verify-image
 make push
 ```
 
@@ -53,6 +50,7 @@ make doctor      # Check Docker and basic host dependencies
 make preflight   # Static checks that do not require Docker
 make resolve-ref # Resolve AWX_REF to the exact upstream commit SHA
 make build       # Build the private AWX image
+make verify-image # Verify embedded AWX source revision and required files
 make push        # Push the already-built image tag
 make print-tags  # Print IMAGE_NAME:IMAGE_TAG
 ```

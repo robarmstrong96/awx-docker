@@ -13,11 +13,11 @@ fi
 
 AWX_REPO="${AWX_REPO:-https://github.com/ansible/awx.git}"
 AWX_REF="${AWX_REF:-devel}"
+AWX_REQUESTED_REF="${AWX_REQUESTED_REF:-$AWX_REF}"
 RECEPTOR_IMAGE="${RECEPTOR_IMAGE:-quay.io/ansible/receptor:devel}"
 IMAGE_NAME="${IMAGE_NAME:-awx-devel}"
 IMAGE_TAG="${IMAGE_TAG:-${AWX_REF//\//-}}"
 PLATFORM="${PLATFORM:-linux/amd64}"
-PUSH="${PUSH:-false}"
 DOCKERFILE="${DOCKERFILE:-$ROOT_DIR/Dockerfile}"
 
 usage() {
@@ -29,6 +29,7 @@ Commands:
   preflight    Run static checks that do not require Docker
   resolve-ref  Resolve AWX_REF to a concrete upstream commit SHA
   build        Build the AWX image locally
+  verify-image Verify the built image contents and metadata
   push         Push the already-built image tag
   print-tags   Print the image reference that build/push uses
 USAGE
@@ -128,12 +129,12 @@ docker_build_args() {
     --platform "$PLATFORM"
     --build-arg "AWX_REPO=$AWX_REPO"
     --build-arg "AWX_REF=$resolved_ref"
-    --build-arg "AWX_REQUESTED_REF=$AWX_REF"
+    --build-arg "AWX_REQUESTED_REF=$AWX_REQUESTED_REF"
     --build-arg "AWX_SOURCE_REVISION=$resolved_ref"
     --build-arg "RECEPTOR_IMAGE=$RECEPTOR_IMAGE"
     --label "org.opencontainers.image.revision=$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
     --label "dev.awx-wrapper.awx.repo=$AWX_REPO"
-    --label "dev.awx-wrapper.awx.ref=$AWX_REF"
+    --label "dev.awx-wrapper.awx.ref=$AWX_REQUESTED_REF"
     --label "dev.awx-wrapper.awx.revision=$resolved_ref"
     --tag "$(image_ref)"
   )
@@ -142,11 +143,7 @@ docker_build_args() {
     args+=(--ssh "default=$SSH_AUTH_SOCK")
   fi
 
-  if [[ "$PUSH" == "true" ]]; then
-    args+=(--push)
-  else
-    args+=(--load)
-  fi
+  args+=(--load)
 
   args+=("$ROOT_DIR")
   printf '%s\0' "${args[@]}"
@@ -164,8 +161,47 @@ build_image() {
   docker "${args[@]}"
 }
 
-push_image() {
+verify_image() {
   doctor
+  local expected_ref
+  expected_ref="$(resolve_ref)"
+  local ref
+  ref="$(image_ref)"
+
+  docker image inspect "$ref" >/dev/null
+
+  local label_revision
+  label_revision="$(docker image inspect --format '{{ index .Config.Labels "dev.awx-wrapper.awx.revision" }}' "$ref")"
+  if [[ "$label_revision" != "$expected_ref" ]]; then
+    printf 'image label revision mismatch: expected %s, got %s\n' "$expected_ref" "$label_revision" >&2
+    return 1
+  fi
+
+  local image_revision
+  image_revision="$(
+    docker run --rm --entrypoint /bin/bash "$ref" -lc '
+      set -euo pipefail
+      test -f /awx_devel/manage.py
+      test -f /awx_devel/LICENSE.md
+      test -x /entrypoint.sh
+      test -f /etc/supervisord.conf
+      test -x /usr/local/bin/awx-manage
+      test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
+      test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
+      cat /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION
+    '
+  )"
+
+  if [[ "$image_revision" != "$expected_ref" ]]; then
+    printf 'image source revision mismatch: expected %s, got %s\n' "$expected_ref" "$image_revision" >&2
+    return 1
+  fi
+
+  printf 'verify-image: ok (%s contains AWX %s)\n' "$ref" "$expected_ref"
+}
+
+push_image() {
+  verify_image
   docker push "$(image_ref)"
 }
 
@@ -177,6 +213,7 @@ case "$cmd" in
   preflight) preflight ;;
   resolve-ref) resolve_ref ;;
   build) build_image ;;
+  verify-image) verify_image ;;
   push) push_image ;;
   print-tags) image_ref ;;
   ""|help|-h|--help) usage ;;

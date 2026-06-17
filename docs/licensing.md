@@ -13,6 +13,7 @@ This project must stay private until the public-release gates below are complete
 - Avoid AWX/Ansible logos in this repo or package branding unless trademark guidance explicitly allows the use.
 - Add OCI labels for wrapper source, wrapper revision, upstream AWX repo, upstream AWX ref, and resolved upstream AWX SHA.
 - Confirm the private image can be rebuilt reproducibly from `AWX_REF`.
+- Run `make verify-image` against every candidate image before private promotion or public release review.
 - Add a manual approval gate before any public package visibility change.
 
 ## Current Private Position
@@ -20,4 +21,3 @@ This project must stay private until the public-release gates below are complete
 The current image builder is intended for private testing only. It clones AWX during Docker build and records the resolved AWX revision in `/usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION` inside the image.
 
 The current repository and image naming must describe this as an unofficial builder/image. Do not use language that suggests endorsement by Red Hat, Ansible, or AWX.
-
