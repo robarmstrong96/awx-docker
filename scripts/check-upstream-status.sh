@@ -90,16 +90,17 @@ evidence = pathlib.Path(evidence_dir)
 statuses = json.loads(pathlib.Path(statuses_path).read_text())
 checks = json.loads(pathlib.Path(checks_path).read_text())
 
-combined_state = statuses.get("state", "")
 status_contexts = statuses.get("statuses") or []
 check_runs = checks.get("check_runs") or []
+combined_state = statuses.get("state", "")
+signal = "available" if status_contexts or check_runs else "missing"
 
 fail_reasons = []
 pending_reasons = []
 
 if combined_state in {"failure", "error"}:
     fail_reasons.append(f"combined commit status is {combined_state}")
-elif combined_state == "pending":
+elif combined_state == "pending" and status_contexts:
     pending_reasons.append("combined commit status is pending")
 
 bad_conclusions = {"failure", "cancelled", "timed_out", "action_required", "startup_failure"}
@@ -114,7 +115,6 @@ for run in check_runs:
     if conclusion in bad_conclusions:
         fail_reasons.append(f"check run {name!r} concluded {conclusion}")
 
-signal = "available" if status_contexts or check_runs else "missing"
 if fail_reasons:
     decision = "blocked"
     reason = "; ".join(fail_reasons)
