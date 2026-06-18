@@ -144,7 +144,8 @@ jobs:
               build/evidence/build-metadata.md \
               build/evidence/upstream-status.md \
               build/evidence/runner-diagnostics.md \
-              build/evidence/image-verification.md; do
+              build/evidence/image-verification.md \
+              build/evidence/published-image.md; do
               if [ -f "$file" ]; then
                 echo
                 cat "$file"

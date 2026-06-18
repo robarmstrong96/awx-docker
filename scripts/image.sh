@@ -35,6 +35,7 @@ Commands:
   build        Build the AWX image locally
   verify-image Verify the built image contents and metadata
   push         Push the already-built image tag
+  published-digest Write evidence for the pushed image digest
   print-tags   Print the image reference that build/push uses
 USAGE
 }
@@ -365,9 +366,49 @@ EOF
   printf 'verify-image: ok (%s contains AWX %s)\n' "$ref" "$expected_ref"
 }
 
+record_published_digest() {
+  doctor
+  local ref
+  ref="$(image_ref)"
+  local repo_digest=""
+
+  repo_digest="$(docker image inspect --format '{{ range .RepoDigests }}{{ println . }}{{ end }}' "$ref" 2>/dev/null | sed -n '1p')"
+
+  if [[ -z "$repo_digest" ]] && docker buildx imagetools inspect "$ref" >/tmp/awx-image-digest.out 2>/dev/null; then
+    local digest
+    digest="$(awk '/^Digest:/ { print $2; exit }' /tmp/awx-image-digest.out)"
+    if [[ -n "$digest" ]]; then
+      repo_digest="${ref}@${digest}"
+    fi
+  fi
+
+  if [[ -z "$repo_digest" ]]; then
+    printf 'unable to determine published image digest for %s\n' "$ref" >&2
+    return 1
+  fi
+
+  mkdir -p "$EVIDENCE_DIR"
+  cat > "$EVIDENCE_DIR/published-image.env" <<EOF
+IMAGE_REF=$ref
+IMAGE_REPO_DIGEST=$repo_digest
+PUBLISH_STATUS=passed
+EOF
+
+  cat > "$EVIDENCE_DIR/published-image.md" <<EOF
+# Published Image
+
+- Image: \`$ref\`
+- Immutable digest: \`$repo_digest\`
+- Status: pushed
+EOF
+
+  printf 'published-image: %s\n' "$repo_digest"
+}
+
 push_image() {
   verify_image
   docker push "$(image_ref)"
+  record_published_digest
 }
 
 cmd="${1:-}"
@@ -382,6 +423,7 @@ case "$cmd" in
   build) build_image ;;
   verify-image) verify_image ;;
   push) push_image ;;
+  published-digest) record_published_digest ;;
   print-tags) image_ref ;;
   ""|help|-h|--help) usage ;;
   *)
