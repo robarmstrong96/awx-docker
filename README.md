@@ -47,3 +47,5 @@ make print-tags
 
 - This is not an official AWX, Ansible, or Red Hat image.
 - AWX upstream still recommends the AWX Operator for real deployments.
+- Wrapper files in this repo are licensed under Apache-2.0.
+- Built images include AWX source from `ansible/awx` and retain the AWX license and source revision in `/usr/share/licenses/awx-wrapper/`.
