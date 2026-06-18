@@ -63,7 +63,10 @@ jobs:
           AWX_REF: ${{ steps.awx.outputs.sha }}
           AWX_REQUESTED_REF: ${{ env.AWX_REF }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: make check-upstream-status
+        run: |
+          set -euo pipefail
+          mkdir -p build/evidence
+          make check-upstream-status 2>&1 | tee build/evidence/upstream-status.log
 
       - name: Write build metadata
         env:
