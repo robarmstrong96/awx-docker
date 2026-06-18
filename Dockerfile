@@ -13,8 +13,7 @@ ARG AWX_REPO
 ARG AWX_REF
 ARG AWX_REQUESTED_REF
 
-RUN dnf -y update && \
-    dnf -y install ca-certificates git-core && \
+RUN dnf -y install ca-certificates git-core && \
     dnf -y clean all
 
 RUN git init /awx-src && \
@@ -27,8 +26,7 @@ RUN git init /awx-src && \
 FROM quay.io/centos/centos:stream9 AS ui-builder
 
 USER root
-RUN dnf -y update && \
-    dnf module -y enable nodejs:18 && \
+RUN dnf module -y enable nodejs:18 && \
     dnf module -y install nodejs:18/common && \
     dnf -y install git-core make && \
     dnf -y clean all
@@ -48,7 +46,7 @@ USER root
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 
-RUN dnf -y update && dnf install -y 'dnf-command(config-manager)' && \
+RUN dnf install -y 'dnf-command(config-manager)' && \
     dnf config-manager --set-enabled crb && \
     dnf -y install \
     openssh-clients \
@@ -77,7 +75,7 @@ RUN dnf -y update && dnf install -y 'dnf-command(config-manager)' && \
     xmlsec1-openssl-devel && \
     dnf -y clean all
 
-RUN mkdir -p ~/.ssh && chmod 0700 ~/.ssh && ssh-keyscan github.com > ~/.ssh/known_hosts
+RUN mkdir -p ~/.ssh && chmod 0700 ~/.ssh && ssh-keyscan -T 10 github.com > ~/.ssh/known_hosts || true
 RUN pip3.12 install -vv --no-cache-dir build
 
 COPY --from=awx-source /awx-src/Makefile /tmp/Makefile
@@ -102,6 +100,7 @@ ARG AWX_REF
 ARG AWX_REQUESTED_REF
 ARG AWX_SOURCE_REVISION
 ARG RECEPTOR_IMAGE
+ARG INSTALL_PYTHON_DEBUGINFO=false
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
@@ -127,7 +126,7 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 
 ADD https://copr.fedorainfracloud.org/coprs/ansible/Rsyslog/repo/epel-9/ansible-Rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 
-RUN dnf -y update && dnf install -y 'dnf-command(config-manager)' && \
+RUN dnf install -y 'dnf-command(config-manager)' && \
     dnf config-manager --set-enabled crb && \
     dnf -y install acl \
     git-core \
@@ -174,6 +173,7 @@ RUN dnf module -y enable nodejs:18 && dnf module -y install nodejs:18/common && 
     nss \
     make \
     patch \
+    podman \
     socat \
     tmux \
     wget \
@@ -182,8 +182,10 @@ RUN dnf module -y enable nodejs:18 && dnf module -y install nodejs:18/common && 
     dnf -y clean all
 
 RUN pip3.12 install -vv --no-cache-dir git+https://github.com/coderanger/supervisor-stdout.git@973ba19967cdaf46d9c1634d1675fc65b9574f6e
-RUN pip3.12 install -vv --no-cache-dir black setuptools-scm build
-RUN (dnf --enablerepo=baseos-debug -y install python3-debuginfo && dnf -y clean all) || :
+RUN pip3.12 install -vv --no-cache-dir black setuptools-scm
+RUN if [ "$INSTALL_PYTHON_DEBUGINFO" = "true" ]; then \
+      dnf --enablerepo=baseos-debug -y install python3-debuginfo && dnf -y clean all; \
+    fi
 RUN dnf install -y epel-next-release && dnf install -y inotify-tools && dnf remove -y epel-next-release && dnf -y clean all
 
 # The upstream AWX Dockerfile.dev assumes a checked-out AWX working tree is
@@ -211,7 +213,7 @@ RUN openssl req -nodes -newkey rsa:2048 -keyout /etc/nginx/nginx.key -out /etc/n
     openssl x509 -req -days 365 -in /etc/nginx/nginx.csr -signkey /etc/nginx/nginx.key -out /etc/nginx/nginx.crt && \
     chmod 640 /etc/nginx/nginx.csr /etc/nginx/nginx.key /etc/nginx/nginx.crt
 
-RUN dnf install -y podman && rpm --restore shadow-utils 2>/dev/null && dnf -y clean all
+RUN rpm --restore shadow-utils 2>/dev/null || :
 RUN sed -i -e 's|^#mount_program|mount_program|g' -e '/additionalimage.*/a "/var/lib/shared",' -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' /etc/containers/storage.conf
 ENV _CONTAINERS_USERNS_CONFIGURED=""
 RUN mkdir -p /etc/containers/registries.conf.d/ && \
@@ -230,6 +232,7 @@ COPY --from=awx-source /awx-src/tools/docker-compose/entrypoint.sh /entrypoint.s
 COPY --from=awx-source /awx-src/tools/docker-compose/supervisor.conf /etc/supervisord.conf
 COPY --from=awx-source /awx-src/tools/scripts/config-watcher /usr/bin/config-watcher
 COPY scripts/runtime-entrypoint.sh /usr/local/bin/awx-wrapper-entrypoint
+COPY rootfs/ /
 
 # AWX's development launcher expects the project to be importable from the
 # editable checkout and visible to Python packaging metadata. Because this
@@ -250,6 +253,7 @@ RUN awx_version="0.0.dev0+g${AWX_SOURCE_REVISION}" && \
     ln -sf /awx_devel/tools/docker-compose/awx-manage /usr/local/bin/awx-manage && \
     ln -sf /awx_devel/tools/scripts/awx-python /usr/bin/awx-python && \
     ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery && \
+    sed -i 's/\r$//' /usr/local/bin/awx-wrapper-entrypoint && \
     chmod 0755 /usr/local/bin/awx-wrapper-entrypoint
 
 # The upstream development compose stack prepares writable paths and shared
