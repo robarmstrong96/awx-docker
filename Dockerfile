@@ -186,10 +186,17 @@ RUN pip3.12 install -vv --no-cache-dir black setuptools-scm build
 RUN (dnf --enablerepo=baseos-debug -y install python3-debuginfo && dnf -y clean all) || :
 RUN dnf install -y epel-next-release && dnf install -y inotify-tools && dnf remove -y epel-next-release && dnf -y clean all
 
+# The upstream AWX Dockerfile.dev assumes a checked-out AWX working tree is
+# bind-mounted by the docker-compose development environment. This wrapper
+# bakes the fetched source into the image instead, so a standalone runtime can
+# start without carrying an AWX checkout beside the compose file.
 COPY --from=builder /var/lib/awx /var/lib/awx
 COPY --from=ui-builder /tmp/src /awx_devel
 COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 
+# Keep the source content needed at runtime, but remove upstream git metadata
+# from the final image. The revision files and OCI labels below retain the
+# source identity without shipping /awx_devel/.git.
 RUN rm -rf /awx_devel/.git
 
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
@@ -224,6 +231,11 @@ COPY --from=awx-source /awx-src/tools/docker-compose/supervisor.conf /etc/superv
 COPY --from=awx-source /awx-src/tools/scripts/config-watcher /usr/bin/config-watcher
 COPY scripts/runtime-entrypoint.sh /usr/local/bin/awx-wrapper-entrypoint
 
+# AWX's development launcher expects the project to be importable from the
+# editable checkout and visible to Python packaging metadata. Because this
+# image is built without retaining the upstream .git directory or running an
+# editable install from a mounted checkout, synthesize the minimal dist-info
+# and path files needed for awx-manage, migrations, and Django imports.
 RUN awx_version="0.0.dev0+g${AWX_SOURCE_REVISION}" && \
     site_packages="/var/lib/awx/venv/awx/lib/python3.12/site-packages" && \
     dist_info="${site_packages}/awx-${awx_version}.dist-info" && \
@@ -240,6 +252,9 @@ RUN awx_version="0.0.dev0+g${AWX_SOURCE_REVISION}" && \
     ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery && \
     chmod 0755 /usr/local/bin/awx-wrapper-entrypoint
 
+# The upstream development compose stack prepares writable paths and shared
+# container-storage state around the dev container. Recreate those permissions
+# in the image so the wrapper can run under an external compose deployment.
 RUN for dir in \
       /var/lib/awx \
       /var/lib/awx/rsyslog \
@@ -260,6 +275,10 @@ RUN for dir in \
       /var/lib/awx/rsyslog/rsyslog.conf ; \
     do touch "$file" ; chmod g+rw "$file" ; chgrp root "$file" ; done
 
+# Execution environments are launched by Podman from inside AWX. These paths
+# mirror the writable development-container layout that Podman and AWX expect.
+# The deployment still must provide a usable cgroup setup, such as host cgroup
+# namespace plus a writable /sys/fs/cgroup bind mount.
 RUN for dir in \
       /var/lib/awx/.local \
       /var/lib/awx/venv \
