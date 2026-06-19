@@ -52,6 +52,20 @@ def test_make_publication_targets_are_dagger_aliases() -> None:
     assert dry_run("evidence") == "dagger call evidence --source=."
 
 
+def test_make_production_targets_are_dagger_aliases() -> None:
+    assert dry_run("promote-candidate") == (
+        'dagger call promote-candidate --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
+        '--provider="${UPSTREAM_PROVIDER:-auto}" '
+        '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
+    )
+    assert dry_run("production-admission") == (
+        'dagger call production-admission --source=. --provider="${UPSTREAM_PROVIDER:-auto}"'
+    )
+    assert dry_run("production-pipeline") == (
+        'dagger call production-pipeline --source=. --provider="${UPSTREAM_PROVIDER:-auto}"'
+    )
+
+
 def test_make_aliases_do_not_reference_deleted_wrappers() -> None:
     makefile = (ROOT / "Makefile").read_text()
 

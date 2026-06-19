@@ -1,6 +1,9 @@
 import argparse
 import os
 from pathlib import Path
+from types import SimpleNamespace
+
+import yaml
 
 from awx_docker.config import (
     DEFAULT_AWX_REF,
@@ -18,6 +21,16 @@ from awx_docker.image.pipeline import (
     write_published_image,
     write_upstream_ref,
 )
+from awx_docker.production import (
+    build_lock,
+    load_lock,
+    validate_lock,
+    write_lock,
+    write_production_admission,
+    write_production_pipeline,
+    write_promotion_candidate,
+)
+from awx_docker.production.lock import branch_policy_errors
 from awx_docker.public_readiness import scan_public_readiness
 from awx_docker.upstream import write_upstream_health
 
@@ -116,12 +129,14 @@ def cmd_public_readiness(args: argparse.Namespace) -> int:
     return 1 if report.status == "fail" else 0
 
 
-def cmd_publication_gate(args: argparse.Namespace) -> int:
-    evidence = evidence_dir(args.evidence_dir)
-    upstream_repository = getattr(args, "upstream_repository", None) or getattr(
-        args, "awx_repo", DEFAULT_AWX_REPO
-    )
-    upstream_ref = getattr(args, "upstream_ref", None) or getattr(args, "awx_ref", DEFAULT_AWX_REF)
+def run_publication_gate(
+    upstream_repository: str,
+    upstream_ref: str,
+    provider: str,
+    signal_file: str | None,
+    resolved_revision: str | None,
+    evidence: Path,
+) -> SimpleNamespace:
     readiness = scan_public_readiness(
         root_dir(),
         root_dir() / "policies/public-readiness.yml",
@@ -134,9 +149,9 @@ def cmd_publication_gate(args: argparse.Namespace) -> int:
         root_dir() / "policies/upstream-health.yml",
         "publication",
         os.environ.get("GITHUB_TOKEN"),
-        getattr(args, "provider", "auto"),
-        Path(args.signal_file) if getattr(args, "signal_file", None) else None,
-        getattr(args, "resolved_revision", None),
+        provider,
+        Path(signal_file) if signal_file else None,
+        resolved_revision,
     )
     failed = readiness.status == "fail" or upstream.decision.blocking
     status = "fail" if failed else "pass"
@@ -174,8 +189,112 @@ def cmd_publication_gate(args: argparse.Namespace) -> int:
             "upstream_health_reason": upstream_health_reason,
         },
     )
-    print(f"publication-gate: {status} ({reason})")
-    return 1 if failed else 0
+    return SimpleNamespace(
+        status=status,
+        reason=reason,
+        public_readiness_status=readiness.status,
+        upstream_health_status=upstream.decision.state,
+        upstream_health_blocking=upstream.decision.blocking,
+    )
+
+
+def cmd_publication_gate(args: argparse.Namespace) -> int:
+    evidence = evidence_dir(args.evidence_dir)
+    upstream_repository = getattr(args, "upstream_repository", None) or getattr(
+        args, "awx_repo", DEFAULT_AWX_REPO
+    )
+    upstream_ref = getattr(args, "upstream_ref", None) or getattr(args, "awx_ref", DEFAULT_AWX_REF)
+    gate = run_publication_gate(
+        upstream_repository,
+        upstream_ref,
+        getattr(args, "provider", "auto"),
+        getattr(args, "signal_file", None),
+        getattr(args, "resolved_revision", None),
+        evidence,
+    )
+    print(f"publication-gate: {gate.status} ({gate.reason})")
+    return 1 if gate.status == "fail" else 0
+
+
+def cmd_promote_candidate(args: argparse.Namespace) -> int:
+    resolved = args.resolved_revision or resolve_ref(args.upstream_repository, args.upstream_ref)
+    lock = build_lock(
+        args.upstream_repository,
+        args.upstream_ref,
+        resolved,
+        args.image_name,
+        args.image_tag,
+        evidence_run_url=args.evidence_run_url,
+        promoted_by=args.promoted_by,
+        notes=args.notes,
+    )
+    errors = validate_lock(lock)
+    if errors:
+        print(f"promote-candidate: fail ({'; '.join(errors)})")
+        return 1
+    write_lock(root_dir() / "awx.lock.yml", lock)
+    write_promotion_candidate(evidence_dir(args.evidence_dir), lock)
+    print(f"promote-candidate: pass ({resolved})")
+    return 0
+
+
+def cmd_production_admission(args: argparse.Namespace) -> int:
+    evidence = evidence_dir(args.evidence_dir)
+    lock_path = root_dir() / "awx.lock.yml"
+    lock_present = lock_path.exists()
+    lock_errors = []
+    lock = None
+    if lock_present:
+        lock = load_lock(lock_path)
+        lock_errors = validate_lock(lock)
+    else:
+        lock_errors = ["awx.lock.yml is missing"]
+
+    policy = yaml.safe_load((root_dir() / "policies/branches.yml").read_text())
+    branch_errors = branch_policy_errors(policy, "production", lock_present)
+    if lock is None or lock_errors:
+        readiness = scan_public_readiness(
+            root_dir(),
+            root_dir() / "policies/public-readiness.yml",
+            evidence,
+        )
+        gate = SimpleNamespace(
+            status="fail",
+            reason="awx.lock.yml is missing or invalid.",
+            public_readiness_status=readiness.status,
+        )
+    else:
+        gate = run_publication_gate(
+            lock["upstream"]["repository"],
+            lock["upstream"]["requested_ref"],
+            args.provider,
+            args.signal_file,
+            lock["upstream"]["resolved_revision"],
+            evidence,
+        )
+
+    report = write_production_admission(
+        evidence,
+        lock_present=lock_present,
+        lock_errors=lock_errors,
+        branch_errors=branch_errors,
+        public_readiness_status=gate.public_readiness_status,
+        publication_gate_status=gate.status,
+        publication_gate_reason=gate.reason,
+    )
+    print(f"production-admission: {report['status']} ({report['reason']})")
+    return 1 if report["status"] == "fail" else 0
+
+
+def cmd_write_production_pipeline(args: argparse.Namespace) -> int:
+    lock = load_lock(root_dir() / "awx.lock.yml")
+    errors = validate_lock(lock)
+    if errors:
+        print(f"production-pipeline: fail ({'; '.join(errors)})")
+        return 1
+    write_production_pipeline(evidence_dir(args.evidence_dir), lock)
+    print(f"production-pipeline: pass ({lock['upstream']['resolved_revision']})")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -293,6 +412,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publication.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     publication.set_defaults(func=cmd_publication_gate)
+
+    promote = sub.add_parser("promote-candidate")
+    promote.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    promote.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    promote.add_argument(
+        "--resolved-revision", default=os.environ.get("UPSTREAM_RESOLVED_REVISION")
+    )
+    promote.add_argument("--image-name", default=os.environ.get("IMAGE_NAME", DEFAULT_IMAGE_NAME))
+    promote.add_argument("--image-tag", default=os.environ.get("IMAGE_TAG", DEFAULT_IMAGE_TAG))
+    promote.add_argument("--promoted-by", default=os.environ.get("PROMOTED_BY", ""))
+    promote.add_argument("--evidence-run-url", default=os.environ.get("EVIDENCE_RUN_URL", ""))
+    promote.add_argument("--notes", default=os.environ.get("PROMOTION_NOTES", ""))
+    promote.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    promote.set_defaults(func=cmd_promote_candidate)
+
+    admission = sub.add_parser("production-admission")
+    admission.add_argument("--provider", default=os.environ.get("UPSTREAM_PROVIDER", "auto"))
+    admission.add_argument("--signal-file", default=os.environ.get("UPSTREAM_SIGNAL_FILE"))
+    admission.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    admission.set_defaults(func=cmd_production_admission)
+
+    production = sub.add_parser("write-production-pipeline")
+    production.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    production.set_defaults(func=cmd_write_production_pipeline)
 
     return parser
 

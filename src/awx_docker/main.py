@@ -1,4 +1,5 @@
 import dagger
+import yaml
 from dagger import dag, function, object_type
 
 from awx_docker.config import (
@@ -9,6 +10,7 @@ from awx_docker.config import (
     DEFAULT_PLATFORM,
     DEFAULT_RECEPTOR_IMAGE,
 )
+from awx_docker.production import validate_lock
 
 
 @object_type
@@ -375,6 +377,118 @@ class AwxDocker:
         )
 
     @function
+    async def promote_candidate(
+        self,
+        source: dagger.Directory,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
+        image_name: str = DEFAULT_IMAGE_NAME,
+        image_tag: str = DEFAULT_IMAGE_TAG,
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Verify a candidate and return an updated lock file plus evidence."""
+        source, resolved_sha, _ = await self._verified_image(
+            source,
+            upstream_repository,
+            upstream_ref,
+            provider,
+            signal_file,
+            resolved_revision,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+            github_token,
+        )
+        ctr = self._python(source).with_exec(
+            [
+                "uv",
+                "run",
+                "awx-docker",
+                "promote-candidate",
+                "--upstream-repository",
+                upstream_repository,
+                "--upstream-ref",
+                upstream_ref,
+                "--resolved-revision",
+                resolved_sha,
+                "--image-name",
+                image_name,
+                "--image-tag",
+                image_tag,
+            ]
+        )
+        return source.with_file("awx.lock.yml", ctr.file("awx.lock.yml")).with_directory(
+            "build/evidence", ctr.directory("build/evidence")
+        )
+
+    @function
+    async def production_admission(
+        self,
+        source: dagger.Directory,
+        provider: str = "auto",
+        signal_file: str = "",
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Run the fast admission gate for production branch changes."""
+        ctr = self._python(source)
+        if github_token is not None:
+            ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
+        args = ["uv", "run", "awx-docker", "production-admission", "--provider", provider]
+        if signal_file:
+            args.extend(["--signal-file", signal_file])
+        ctr = ctr.with_exec(args)
+        return ctr.directory("build/evidence")
+
+    @function
+    async def production_pipeline(
+        self,
+        source: dagger.Directory,
+        provider: str = "auto",
+        signal_file: str = "",
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Build and verify the locked production revision, then gate publication."""
+        lock = await self._load_production_lock(source)
+        upstream = lock["upstream"]
+        image = lock["image"]
+        source, resolved_sha, _ = await self._verified_image(
+            source,
+            upstream["repository"],
+            upstream["requested_ref"],
+            provider,
+            signal_file,
+            upstream["resolved_revision"],
+            image["name"],
+            image["tag"],
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+            github_token,
+        )
+        source = self._with_publication_gate_evidence(
+            source,
+            upstream["repository"],
+            upstream["requested_ref"],
+            provider,
+            signal_file,
+            resolved_sha,
+            github_token,
+        )
+        source = await self._write_production_pipeline(source)
+        return source.directory("build/evidence")
+
+    @function
     async def evidence(
         self,
         source: dagger.Directory,
@@ -733,6 +847,12 @@ class AwxDocker:
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
 
+    async def _write_production_pipeline(self, source: dagger.Directory) -> dagger.Directory:
+        ctr = self._python(source).with_exec(
+            ["uv", "run", "awx-docker", "write-production-pipeline"]
+        )
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
     async def _prepare_image_source(
         self,
         source: dagger.Directory,
@@ -779,6 +899,16 @@ class AwxDocker:
             )
             .stdout()
         ).strip()
+
+    async def _load_production_lock(self, source: dagger.Directory) -> dict:
+        contents = await source.file("awx.lock.yml").contents()
+        lock = yaml.safe_load(contents)
+        if not isinstance(lock, dict):
+            raise ValueError("awx.lock.yml must contain a mapping")
+        errors = validate_lock(lock)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return lock
 
     def _split_image_ref(self, image_ref: str) -> tuple[str, str]:
         last_segment = image_ref.rsplit("/", 1)[-1]

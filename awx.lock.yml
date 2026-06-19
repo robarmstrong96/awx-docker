@@ -1,0 +1,17 @@
+schema: awx-docker.awx-lock/v1
+
+upstream:
+  repository: https://github.com/ansible/awx.git
+  requested_ref: devel
+  resolved_revision: 6fd612a058eb6c37d6c21bbbd43fe32185dd1dc5
+  observed_at: "2026-06-19T00:00:00Z"
+
+image:
+  name: ghcr.io/robarmstrong96/awx-devel
+  tag: prod-2026-06-19-6fd612a
+
+promotion:
+  source_branch: development
+  promoted_by: ""
+  evidence_run_url: ""
+  notes: ""

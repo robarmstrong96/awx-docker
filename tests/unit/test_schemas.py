@@ -14,6 +14,12 @@ from awx_docker.image.pipeline import (
     write_published_image,
     write_upstream_ref,
 )
+from awx_docker.production import (
+    build_lock,
+    write_production_admission,
+    write_production_pipeline,
+    write_promotion_candidate,
+)
 from awx_docker.public_readiness.scan import scan_public_readiness
 from awx_docker.upstream.policy import load_policy
 from awx_docker.upstream.report import build_report
@@ -27,6 +33,16 @@ def schema(name: str) -> dict:
 
 def test_generated_reports_match_schemas(tmp_path: Path) -> None:
     evidence = tmp_path / "evidence"
+    lock = build_lock(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "1" * 40,
+        "ghcr.io/example/awx-devel",
+        "prod-2026-06-19-1111111",
+        observed_at="2026-06-19T00:00:00Z",
+    )
+    validate(lock, schema("awx-lock"))
+
     metadata = write_build_metadata(
         tmp_path,
         evidence,
@@ -87,6 +103,23 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         "f" * 40,
     )
     validate(published_image, schema("published-image"))
+
+    promotion_candidate = write_promotion_candidate(evidence, lock)
+    validate(promotion_candidate, schema("promotion-candidate"))
+
+    production_admission = write_production_admission(
+        evidence,
+        lock_present=True,
+        lock_errors=[],
+        branch_errors=[],
+        public_readiness_status="pass",
+        publication_gate_status="pass",
+        publication_gate_reason="Publication gate passed.",
+    )
+    validate(production_admission, schema("production-admission"))
+
+    production_pipeline = write_production_pipeline(evidence, lock)
+    validate(production_pipeline, schema("production-pipeline"))
 
     image_verification = {
         "schema_version": "awx-docker.image-verification/v1",
@@ -194,3 +227,9 @@ def test_generated_publication_gate_matches_schema(monkeypatch, tmp_path: Path) 
     assert rc == 0
     publication_gate = json.loads((tmp_path / "publication-gate.json").read_text())
     validate(publication_gate, schema("publication-gate"))
+
+
+def test_checked_in_lockfile_matches_schema() -> None:
+    lock = yaml.safe_load((ROOT / "awx.lock.yml").read_text())
+
+    validate(lock, schema("awx-lock"))

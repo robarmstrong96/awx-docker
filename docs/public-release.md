@@ -3,6 +3,7 @@
 Before making the repository or images public:
 
 - Run `dagger call publication-gate --source=. --upstream-ref=devel`.
+- For production promotion, run `dagger call production-admission --source=.`.
 - Review `NOTICE` and `THIRD_PARTY_NOTICES.md`.
 - Confirm built images preserve upstream AWX license and revision metadata.
 - Confirm no official branding, logos, or support claims are present.

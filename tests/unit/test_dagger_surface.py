@@ -42,6 +42,9 @@ def test_dagger_surface_includes_public_readiness_aliases() -> None:
     assert "image_pipeline" in functions
     assert "image_export" in functions
     assert "image_publish" in functions
+    assert "promote_candidate" in functions
+    assert "production_admission" in functions
+    assert "production_pipeline" in functions
 
 
 def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
@@ -76,3 +79,13 @@ def test_image_publish_requires_publication_gate_by_default() -> None:
     assert "_with_publication_gate_evidence" in source
     assert "_write_published_image" in source
     assert ".publish(image_ref)" in source
+
+
+def test_production_pipeline_reads_locked_revision() -> None:
+    production = public_dagger_functions()["production_pipeline"]
+    source = source_for(production)
+
+    assert "_load_production_lock" in source
+    assert "upstream['resolved_revision']" in source
+    assert "_with_publication_gate_evidence" in source
+    assert "_write_production_pipeline" in source

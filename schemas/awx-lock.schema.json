@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "image": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "tag"
+      ],
+      "type": "object"
+    },
+    "promotion": {
+      "additionalProperties": true,
+      "properties": {
+        "evidence_run_url": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "promoted_by": {
+          "type": "string"
+        },
+        "source_branch": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_branch",
+        "promoted_by",
+        "evidence_run_url",
+        "notes"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "awx-docker.awx-lock/v1"
+    },
+    "upstream": {
+      "additionalProperties": true,
+      "properties": {
+        "observed_at": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "requested_ref": {
+          "type": "string"
+        },
+        "resolved_revision": {
+          "pattern": "^[0-9a-fA-F]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "requested_ref",
+        "resolved_revision",
+        "observed_at"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "upstream",
+    "image",
+    "promotion"
+  ],
+  "type": "object"
+}
