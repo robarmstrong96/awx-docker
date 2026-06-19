@@ -232,6 +232,7 @@ class AwxDocker:
                     "ca-certificates",
                     "curl",
                     "git",
+                    "libatomic1",
                     "shellcheck",
                     "shfmt",
                     "tar",
