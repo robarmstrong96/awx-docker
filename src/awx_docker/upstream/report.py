@@ -57,7 +57,12 @@ def write_upstream_health(
         return report
 
     try:
-        combined, checks = fetch_signals(repo, resolved_sha, github_token)
+        combined, checks = fetch_signals(
+            repo,
+            resolved_sha,
+            github_token,
+            checks_per_page=policy["github"]["check_runs"]["per_page"],
+        )
         write_raw(evidence_dir / "upstream-raw", combined, checks)
     except Exception as exc:
         combined = {"state": "none", "statuses": []}

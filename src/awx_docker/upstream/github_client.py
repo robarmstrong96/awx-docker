@@ -17,7 +17,12 @@ def github_repo_path(repo_url: str) -> str:
     return path
 
 
-def fetch_signals(repo_url: str, sha: str, token: str | None = None) -> tuple[dict, dict]:
+def fetch_signals(
+    repo_url: str,
+    sha: str,
+    token: str | None = None,
+    checks_per_page: int = 100,
+) -> tuple[dict, dict]:
     repo_path = github_repo_path(repo_url)
     headers = {
         "Accept": "application/vnd.github+json",
@@ -27,7 +32,10 @@ def fetch_signals(repo_url: str, sha: str, token: str | None = None) -> tuple[di
         headers["Authorization"] = f"Bearer {token}"
 
     combined_url = f"https://api.github.com/repos/{repo_path}/commits/{sha}/status"
-    checks_url = f"https://api.github.com/repos/{repo_path}/commits/{sha}/check-runs?per_page=100"
+    checks_url = (
+        f"https://api.github.com/repos/{repo_path}/commits/{sha}/check-runs"
+        f"?per_page={checks_per_page}"
+    )
     combined = requests.get(combined_url, headers=headers, timeout=30)
     combined.raise_for_status()
     checks = requests.get(checks_url, headers=headers, timeout=30)
