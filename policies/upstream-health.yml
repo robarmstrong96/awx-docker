@@ -41,6 +41,7 @@ decisions:
     - "\\bstatic[- ]?analysis\\b"
     - "\\bdocs?\\b"
     - "\\bdocumentation\\b"
+    - "\\bdispatch ci to release branches\\b"
 
   required_success_check_name_patterns:
     - "\\bbuild\\b"

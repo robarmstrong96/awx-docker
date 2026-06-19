@@ -101,6 +101,33 @@ def test_lint_static_analysis_and_docs_failures_are_non_blocking_evidence() -> N
     ]
 
 
+def test_release_branch_dispatch_failures_are_non_blocking_evidence() -> None:
+    combined, checks = load_fixture("healthy")
+    checks["check_runs"] = [
+        {"name": "Build", "status": "completed", "conclusion": "success"},
+        {
+            "name": "Dispatch CI to release branches",
+            "status": "completed",
+            "conclusion": "failure",
+        },
+    ]
+    report = build_report(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        combined,
+        checks,
+        POLICY,
+        "publication",
+    )
+
+    assert report.decision.state == "pass"
+    assert report.signals.ci.blocking_failures == []
+    assert report.signals.ci.non_blocking_failures == [
+        "Dispatch CI to release branches (failure)",
+    ]
+
+
 def test_unclassified_failing_check_blocks() -> None:
     assert decision_for("failing-check", "scheduled-build") == "fail"
     assert decision_for("failing-check", "local") == "fail"

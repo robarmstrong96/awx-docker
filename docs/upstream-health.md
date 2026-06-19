@@ -32,8 +32,8 @@ GitHub check classification:
 
 - failing build-like checks block; examples include `Build`, `Container build`,
   `Image build`, `Docker build`, and `buildx`
-- failing SonarCloud, lint, static-analysis, or docs checks are retained as
-  non-blocking evidence
+- failing SonarCloud, lint, static-analysis, docs, or release-branch CI
+  dispatch checks are retained as non-blocking evidence
 - missing CI or missing build-success evidence warns for `local` and
   `scheduled-build`, but fails for `publication`
 
