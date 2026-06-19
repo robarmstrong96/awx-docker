@@ -23,7 +23,9 @@ class CheckRunSignal:
     available: bool
     total: int
     failing: list[str] = field(default_factory=list)
+    non_blocking_failures: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

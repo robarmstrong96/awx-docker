@@ -11,7 +11,7 @@ github:
     per_page: 100
 
 decisions:
-  fail_on_combined_states:
+  warn_on_combined_states:
     - failure
     - error
 
@@ -31,6 +31,31 @@ decisions:
     - pending
     - requested
     - waiting
+
+  blocking_failed_check_name_patterns:
+    - "\\bbuild\\b"
+    - "\\bcontainer build\\b"
+    - "\\bimage build\\b"
+    - "\\bdocker build\\b"
+    - "\\bbuildx\\b"
+    - "\\bpush-development-images\\b"
+
+  non_blocking_failed_check_name_patterns:
+    - "\\bSonarCloud Code Analysis\\b"
+    - "\\bsonarcloud\\b"
+    - "\\bsonar\\b"
+    - "\\blint\\b"
+    - "\\bstatic[- ]?analysis\\b"
+    - "\\bdocs?\\b"
+    - "\\bdocumentation\\b"
+
+  required_success_check_name_patterns:
+    - "\\bbuild\\b"
+    - "\\bcontainer build\\b"
+    - "\\bimage build\\b"
+    - "\\bdocker build\\b"
+    - "\\bbuildx\\b"
+    - "\\bpush-development-images\\b"
 
 modes:
   scheduled-build:

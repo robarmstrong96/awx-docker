@@ -26,6 +26,9 @@ def build_report(
         checks,
         fail_conclusions=set(decisions["fail_on_check_conclusions"]),
         wait_statuses=set(decisions["wait_on_check_statuses"]),
+        blocking_failure_name_patterns=decisions["blocking_failed_check_name_patterns"],
+        non_blocking_failure_name_patterns=decisions["non_blocking_failed_check_name_patterns"],
+        required_success_name_patterns=decisions["required_success_check_name_patterns"],
     )
     return UpstreamHealthReport(
         schema_version=SCHEMA_VERSION,
@@ -110,6 +113,9 @@ def _write_report(
             "resolved_sha": f"`{resolved_sha}`",
             "combined_status": f"`{report.signals.combined_status.state}`",
             "check_runs": str(report.signals.check_runs.total),
+            "blocking_failures": str(len(report.signals.check_runs.failing)),
+            "non_blocking_failures": str(len(report.signals.check_runs.non_blocking_failures)),
+            "warnings": str(len(report.signals.check_runs.warnings)),
             "decision": f"`{report.decision.state}`",
             "reason": report.decision.reason,
         },

@@ -16,9 +16,13 @@ def decide(signals: UpstreamSignals, policy: dict, mode: str) -> UpstreamDecisio
     combined_state = signals.combined_status.state
     failing = list(signals.check_runs.failing)
     pending = list(signals.check_runs.pending)
+    warnings = list(signals.check_runs.warnings)
 
-    if combined_state in policy["decisions"]["fail_on_combined_states"]:
-        failing.append(f"combined commit status is {combined_state}")
+    if (
+        not signals.check_runs.available
+        and combined_state in policy["decisions"]["warn_on_combined_states"]
+    ):
+        warnings.append(f"combined commit status is {combined_state}")
     wait_states = policy["decisions"]["wait_on_combined_states"]
     if signals.combined_status.available and combined_state in wait_states:
         pending.append(f"combined commit status is {combined_state}")
@@ -29,6 +33,9 @@ def decide(signals: UpstreamSignals, policy: dict, mode: str) -> UpstreamDecisio
     elif pending:
         base = "wait"
         reason = "; ".join(pending)
+    elif warnings:
+        base = "warn"
+        reason = "; ".join(warnings)
     elif not signals.combined_status.available and not signals.check_runs.available:
         base = "warn"
         reason = (

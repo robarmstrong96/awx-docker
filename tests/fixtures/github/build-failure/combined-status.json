@@ -1,0 +1,9 @@
+{
+  "state": "failure",
+  "statuses": [
+    {
+      "context": "ci/build",
+      "state": "failure"
+    }
+  ]
+}

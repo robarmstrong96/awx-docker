@@ -1,0 +1,15 @@
+{
+  "total_count": 2,
+  "check_runs": [
+    {
+      "name": "Build",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "SonarCloud Code Analysis",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ]
+}

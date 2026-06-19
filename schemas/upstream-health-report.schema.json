@@ -47,6 +47,12 @@
               },
               "type": "array"
             },
+            "non_blocking_failures": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
             "pending": {
               "items": {
                 "type": "string"
@@ -56,13 +62,21 @@
             "total": {
               "minimum": 0,
               "type": "integer"
+            },
+            "warnings": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "required": [
             "available",
             "total",
             "failing",
-            "pending"
+            "non_blocking_failures",
+            "pending",
+            "warnings"
           ],
           "type": "object"
         },
