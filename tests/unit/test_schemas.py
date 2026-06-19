@@ -7,14 +7,14 @@ import pytest
 import yaml
 from jsonschema import ValidationError, validate
 
-from awx_docker.cli import cmd_release_check
+from awx_docker.cli import cmd_publication_gate
 from awx_docker.image.metadata import write_build_metadata
 from awx_docker.image.pipeline import (
     write_image_pipeline,
     write_published_image,
     write_upstream_ref,
 )
-from awx_docker.public_hygiene.scan import scan_public_hygiene
+from awx_docker.public_readiness.scan import scan_public_readiness
 from awx_docker.upstream.policy import load_policy
 from awx_docker.upstream.report import build_report
 
@@ -39,12 +39,12 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
     )
     validate(metadata, schema("build-metadata"))
 
-    hygiene = scan_public_hygiene(
+    readiness = scan_public_readiness(
         ROOT,
-        ROOT / "policies/public-hygiene.yml",
+        ROOT / "policies/public-readiness.yml",
         evidence,
     )
-    validate(hygiene.to_dict(), schema("public-hygiene"))
+    validate(readiness.to_dict(), schema("public-readiness"))
 
     combined = json.loads((ROOT / "tests/fixtures/github/healthy/combined-status.json").read_text())
     checks = json.loads((ROOT / "tests/fixtures/github/healthy/check-runs.json").read_text())
@@ -136,7 +136,7 @@ def test_upstream_health_schema_requires_nested_contract() -> None:
         validate(report, schema("upstream-health-report"))
 
 
-def test_public_hygiene_schema_requires_finding_contract(tmp_path: Path) -> None:
+def test_public_readiness_schema_requires_finding_contract(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text("ok\n")
     forbidden_path = "/" + "home/example"
     (tmp_path / "notes.txt").write_text(f"path {forbidden_path} should not ship\n")
@@ -144,7 +144,7 @@ def test_public_hygiene_schema_requires_finding_contract(tmp_path: Path) -> None
     policy.write_text(
         yaml.safe_dump(
             {
-                "schema": "awx-docker.public-hygiene/v1",
+                "schema": "awx-docker.public-readiness/v1",
                 "forbidden_patterns": [
                     {
                         "name": "local-home-path",
@@ -157,16 +157,16 @@ def test_public_hygiene_schema_requires_finding_contract(tmp_path: Path) -> None
             sort_keys=True,
         )
     )
-    report = scan_public_hygiene(tmp_path, policy, tmp_path / "evidence").to_dict()
+    report = scan_public_readiness(tmp_path, policy, tmp_path / "evidence").to_dict()
     del report["findings"][0]["line"]
 
     with pytest.raises(ValidationError):
-        validate(report, schema("public-hygiene"))
+        validate(report, schema("public-readiness"))
 
 
-def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> None:
+def test_generated_publication_gate_matches_schema(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
-        "awx_docker.cli.scan_public_hygiene",
+        "awx_docker.cli.scan_public_readiness",
         lambda root, policy_path, evidence: SimpleNamespace(status="pass"),
     )
     monkeypatch.setattr(
@@ -180,7 +180,7 @@ def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> 
         ),
     )
 
-    rc = cmd_release_check(
+    rc = cmd_publication_gate(
         argparse.Namespace(
             upstream_repository="https://github.com/ansible/awx.git",
             upstream_ref="devel",
@@ -192,5 +192,5 @@ def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> 
     )
 
     assert rc == 0
-    release_check = json.loads((tmp_path / "release-check.json").read_text())
-    validate(release_check, schema("release-check"))
+    publication_gate = json.loads((tmp_path / "publication-gate.json").read_text())
+    validate(publication_gate, schema("publication-gate"))

@@ -120,14 +120,9 @@ class AwxDocker:
         ).strip()
 
     @function
-    async def public_hygiene(self, source: dagger.Directory) -> dagger.Directory:
-        """Scan public-facing files and return public readiness evidence."""
-        return self._with_public_hygiene_evidence(source).directory("build/evidence")
-
-    @function
     async def public_readiness(self, source: dagger.Directory) -> dagger.Directory:
         """Scan public-facing files and return public readiness evidence."""
-        return await self.public_hygiene(source)
+        return self._with_public_readiness_evidence(source).directory("build/evidence")
 
     @function
     async def image_build(
@@ -358,40 +353,6 @@ class AwxDocker:
         return source.directory("build/evidence")
 
     @function
-    async def release_check(
-        self,
-        source: dagger.Directory,
-        upstream_ref: str = DEFAULT_AWX_REF,
-        upstream_repository: str = DEFAULT_AWX_REPO,
-        provider: str = "auto",
-        signal_file: str = "",
-        resolved_revision: str = "",
-        github_token: dagger.Secret | None = None,
-    ) -> dagger.Directory:
-        """Run checks required before making the repository or image public."""
-        ctr = self._python(source)
-        if github_token is not None:
-            ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
-        args = [
-            "uv",
-            "run",
-            "awx-docker",
-            "release-check",
-            "--upstream-repository",
-            upstream_repository,
-            "--upstream-ref",
-            upstream_ref,
-            "--provider",
-            provider,
-        ]
-        if signal_file:
-            args.extend(["--signal-file", signal_file])
-        if resolved_revision:
-            args.extend(["--resolved-revision", resolved_revision])
-        ctr = ctr.with_exec(args)
-        return ctr.directory("build/evidence")
-
-    @function
     async def publication_gate(
         self,
         source: dagger.Directory,
@@ -403,10 +364,10 @@ class AwxDocker:
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Run checks required before public repository or image publication."""
-        return await self.release_check(
+        return self._with_publication_gate_evidence(
             source,
-            upstream_ref,
             upstream_repository,
+            upstream_ref,
             provider,
             signal_file,
             resolved_revision,
@@ -427,14 +388,14 @@ class AwxDocker:
         source, _ = await self._prepare_image_source(
             source, image_name, image_tag, awx_repo, awx_ref, platform
         )
-        return self._with_public_hygiene_evidence(source).directory("build/evidence")
+        return self._with_public_readiness_evidence(source).directory("build/evidence")
 
-    def _with_public_hygiene_evidence(self, source: dagger.Directory) -> dagger.Container:
-        return self._python(source).with_exec(["uv", "run", "awx-docker", "public-hygiene"])
+    def _with_public_readiness_evidence(self, source: dagger.Directory) -> dagger.Container:
+        return self._python(source).with_exec(["uv", "run", "awx-docker", "public-readiness"])
 
     def _check_container(self, source: dagger.Directory) -> dagger.Container:
         return self._policy_test_container(source).with_exec(
-            ["uv", "run", "awx-docker", "public-hygiene"]
+            ["uv", "run", "awx-docker", "public-readiness"]
         )
 
     def _code_quality_container(self, source: dagger.Directory) -> dagger.Container:
@@ -693,7 +654,7 @@ class AwxDocker:
             "uv",
             "run",
             "awx-docker",
-            "release-check",
+            "publication-gate",
             "--upstream-repository",
             upstream_repository,
             "--upstream-ref",

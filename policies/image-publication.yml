@@ -4,7 +4,7 @@ visibility:
   manual_only: true
 
 required_checks:
-  - public-hygiene
+  - public-readiness
   - upstream-health
   - image-verification
 

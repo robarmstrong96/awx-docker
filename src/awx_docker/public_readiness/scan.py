@@ -17,7 +17,7 @@ class Finding:
 
 
 @dataclass(frozen=True)
-class PublicHygieneReport:
+class PublicReadinessReport:
     schema_version: str
     status: str
     findings: list[Finding]
@@ -43,7 +43,9 @@ def _iter_files(root: Path) -> list[Path]:
     return files
 
 
-def scan_public_hygiene(root: Path, policy_path: Path, evidence_dir: Path) -> PublicHygieneReport:
+def scan_public_readiness(
+    root: Path, policy_path: Path, evidence_dir: Path
+) -> PublicReadinessReport:
     policy = yaml.safe_load(policy_path.read_text())
     policy_path = policy_path.resolve()
     findings: list[Finding] = []
@@ -75,17 +77,17 @@ def scan_public_hygiene(root: Path, policy_path: Path, evidence_dir: Path) -> Pu
 
     missing = [path for path in policy.get("required_files", []) if not (root / path).exists()]
     status = "fail" if missing or any(f.severity == "fail" for f in findings) else "pass"
-    report = PublicHygieneReport(
+    report = PublicReadinessReport(
         schema_version=policy["schema"],
         status=status,
         findings=findings,
         missing_required_files=missing,
     )
 
-    write_json(evidence_dir / "public-hygiene.json", report.to_dict())
+    write_json(evidence_dir / "public-readiness.json", report.to_dict())
     write_markdown(
-        evidence_dir / "public-hygiene.md",
-        "Public Hygiene",
+        evidence_dir / "public-readiness.md",
+        "Public Readiness",
         {
             "status": f"`{status}`",
             "findings": str(len(findings)),

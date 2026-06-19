@@ -1,4 +1,4 @@
-name: Release check
+name: Publication gate
 
 "on":
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   statuses: read
 
 jobs:
-  release-check:
+  publication-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +22,4 @@ jobs:
         with:
           version: "latest"
           verb: call
-          args: release-check --source=. --upstream-ref=${{ inputs.awx_ref }}
+          args: publication-gate --source=. --upstream-ref=${{ inputs.awx_ref }}

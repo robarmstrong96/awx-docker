@@ -54,7 +54,7 @@ jobs:
         with:
           version: "latest"
           verb: call
-          args: release-check --source=. --upstream-ref=${{ env.AWX_REF }}
+          args: publication-gate --source=. --upstream-ref=${{ env.AWX_REF }}
 
       - name: Confirm manual publication
         if: ${{ env.PUBLISH_IMAGE == 'true' }}

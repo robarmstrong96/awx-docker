@@ -5,10 +5,10 @@
     "checks": {
       "additionalProperties": true,
       "properties": {
-        "public_hygiene": {
+        "public_readiness": {
           "type": "string"
         },
-        "public_hygiene_reason": {
+        "public_readiness_reason": {
           "type": "string"
         },
         "upstream_health": {
@@ -19,8 +19,8 @@
         }
       },
       "required": [
-        "public_hygiene",
-        "public_hygiene_reason",
+        "public_readiness",
+        "public_readiness_reason",
         "upstream_health",
         "upstream_health_reason"
       ],
@@ -30,7 +30,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "awx-docker.release-check/v1"
+      "const": "awx-docker.publication-gate/v1"
     },
     "status": {
       "enum": [

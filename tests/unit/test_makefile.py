@@ -57,4 +57,4 @@ def test_make_aliases_do_not_reference_deleted_wrappers() -> None:
 
     assert "scripts/image.sh" not in makefile
     assert "scripts/check-upstream-status.sh" not in makefile
-    assert "scripts/check-public-hygiene.sh" not in makefile
+    assert "scripts/check-public-readiness.sh" not in makefile

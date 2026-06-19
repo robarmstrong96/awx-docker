@@ -18,7 +18,7 @@ from awx_docker.image.pipeline import (
     write_published_image,
     write_upstream_ref,
 )
-from awx_docker.public_hygiene import scan_public_hygiene
+from awx_docker.public_readiness import scan_public_readiness
 from awx_docker.upstream import write_upstream_health
 
 
@@ -106,25 +106,25 @@ def cmd_upstream_health(args: argparse.Namespace) -> int:
     return 1 if report.decision.blocking else 0
 
 
-def cmd_public_hygiene(args: argparse.Namespace) -> int:
-    report = scan_public_hygiene(
+def cmd_public_readiness(args: argparse.Namespace) -> int:
+    report = scan_public_readiness(
         root_dir(),
-        root_dir() / "policies/public-hygiene.yml",
+        root_dir() / "policies/public-readiness.yml",
         evidence_dir(args.evidence_dir),
     )
-    print(f"public-hygiene: {report.status}")
+    print(f"public-readiness: {report.status}")
     return 1 if report.status == "fail" else 0
 
 
-def cmd_release_check(args: argparse.Namespace) -> int:
+def cmd_publication_gate(args: argparse.Namespace) -> int:
     evidence = evidence_dir(args.evidence_dir)
     upstream_repository = getattr(args, "upstream_repository", None) or getattr(
         args, "awx_repo", DEFAULT_AWX_REPO
     )
     upstream_ref = getattr(args, "upstream_ref", None) or getattr(args, "awx_ref", DEFAULT_AWX_REF)
-    hygiene = scan_public_hygiene(
+    readiness = scan_public_readiness(
         root_dir(),
-        root_dir() / "policies/public-hygiene.yml",
+        root_dir() / "policies/public-readiness.yml",
         evidence,
     )
     upstream = write_upstream_health(
@@ -138,43 +138,43 @@ def cmd_release_check(args: argparse.Namespace) -> int:
         Path(args.signal_file) if getattr(args, "signal_file", None) else None,
         getattr(args, "resolved_revision", None),
     )
-    failed = hygiene.status == "fail" or upstream.decision.blocking
+    failed = readiness.status == "fail" or upstream.decision.blocking
     status = "fail" if failed else "pass"
-    public_hygiene_reason = (
-        "Public hygiene passed." if hygiene.status != "fail" else "Public hygiene failed."
+    public_readiness_reason = (
+        "Public readiness passed." if readiness.status != "fail" else "Public readiness failed."
     )
     upstream_health_reason = upstream.decision.reason
     reason_parts = []
-    if hygiene.status == "fail":
-        reason_parts.append(public_hygiene_reason)
+    if readiness.status == "fail":
+        reason_parts.append(public_readiness_reason)
     if upstream.decision.blocking:
         reason_parts.append(upstream_health_reason)
-    reason = " ".join(reason_parts) if reason_parts else "Release checks passed."
+    reason = " ".join(reason_parts) if reason_parts else "Publication gate passed."
     data = {
-        "schema_version": "awx-docker.release-check/v1",
+        "schema_version": "awx-docker.publication-gate/v1",
         "status": status,
         "reason": reason,
         "checks": {
-            "public_hygiene": hygiene.status,
-            "public_hygiene_reason": public_hygiene_reason,
+            "public_readiness": readiness.status,
+            "public_readiness_reason": public_readiness_reason,
             "upstream_health": upstream.decision.state,
             "upstream_health_reason": upstream_health_reason,
         },
     }
-    write_json(evidence / "release-check.json", data)
+    write_json(evidence / "publication-gate.json", data)
     write_markdown(
-        evidence / "release-check.md",
-        "Release Check",
+        evidence / "publication-gate.md",
+        "Publication Gate",
         {
             "status": f"`{status}`",
             "reason": reason,
-            "public_hygiene": f"`{hygiene.status}`",
-            "public_hygiene_reason": public_hygiene_reason,
+            "public_readiness": f"`{readiness.status}`",
+            "public_readiness_reason": public_readiness_reason,
             "upstream_health": f"`{upstream.decision.state}`",
             "upstream_health_reason": upstream_health_reason,
         },
     )
-    print(f"release-check: {status} ({reason})")
+    print(f"publication-gate: {status} ({reason})")
     return 1 if failed else 0
 
 
@@ -271,28 +271,28 @@ def build_parser() -> argparse.ArgumentParser:
     upstream.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     upstream.set_defaults(func=cmd_upstream_health)
 
-    hygiene = sub.add_parser("public-hygiene")
-    hygiene.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
-    hygiene.set_defaults(func=cmd_public_hygiene)
+    readiness = sub.add_parser("public-readiness")
+    readiness.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    readiness.set_defaults(func=cmd_public_readiness)
 
-    release = sub.add_parser("release-check")
-    release.add_argument(
+    publication = sub.add_parser("publication-gate")
+    publication.add_argument(
         "--upstream-repository",
         default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
     )
-    release.add_argument(
+    publication.add_argument(
         "--upstream-ref",
         default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
     )
-    release.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
-    release.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
-    release.add_argument("--provider", default=os.environ.get("UPSTREAM_PROVIDER", "auto"))
-    release.add_argument("--signal-file", default=os.environ.get("UPSTREAM_SIGNAL_FILE"))
-    release.add_argument(
+    publication.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
+    publication.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
+    publication.add_argument("--provider", default=os.environ.get("UPSTREAM_PROVIDER", "auto"))
+    publication.add_argument("--signal-file", default=os.environ.get("UPSTREAM_SIGNAL_FILE"))
+    publication.add_argument(
         "--resolved-revision", default=os.environ.get("UPSTREAM_RESOLVED_REVISION")
     )
-    release.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
-    release.set_defaults(func=cmd_release_check)
+    publication.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    publication.set_defaults(func=cmd_publication_gate)
 
     return parser
 

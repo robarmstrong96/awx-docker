@@ -47,7 +47,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "awx-docker.public-hygiene/v1"
+      "const": "awx-docker.public-readiness/v1"
     },
     "status": {
       "enum": [

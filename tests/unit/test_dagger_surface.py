@@ -49,7 +49,7 @@ def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
     source = source_for(evidence)
 
     assert "_prepare_image_source" in source
-    assert "_with_public_hygiene_evidence" in source
+    assert "_with_public_readiness_evidence" in source
     assert 'source.directory("build/evidence")' not in source
 
 

@@ -1,4 +1,4 @@
-schema: awx-docker.public-hygiene/v1
+schema: awx-docker.public-readiness/v1
 
 forbidden_patterns:
   - name: local-home-path
