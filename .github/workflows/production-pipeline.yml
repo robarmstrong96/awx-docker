@@ -1,12 +1,10 @@
-name: Publication Gate
+name: Production Pipeline
 
 "on":
+  push:
+    branches:
+      - production
   workflow_dispatch:
-    inputs:
-      awx_ref:
-        description: AWX branch, tag, or commit to evaluate
-        required: true
-        default: devel
 
 permissions:
   contents: read
@@ -14,8 +12,8 @@ permissions:
   statuses: read
 
 jobs:
-  verify-publication-readiness:
-    name: Verify publication readiness
+  build-locked-image:
+    name: Build locked image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +23,8 @@ jobs:
           version: "v0.21.4"
           verb: call
           args: >-
-            publication-gate
+            production-pipeline
             --source=.
-            --upstream-ref=${{ inputs.awx_ref }}
             --provider=auto
             --github-token=env://GITHUB_TOKEN
             export --path=build/evidence
@@ -35,7 +32,7 @@ jobs:
       - name: Upload evidence reports
         uses: actions/upload-artifact@v4
         with:
-          name: publication-gate-evidence
+          name: production-pipeline-evidence
           path: build/evidence/
           if-no-files-found: error
           retention-days: 30

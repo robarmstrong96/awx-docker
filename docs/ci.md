@@ -2,10 +2,11 @@
 
 CI uses Dagger as the command interface.
 
-- `check.yml` runs the fast default `dagger call check --source=.`
-- `image-build.yml` runs the transactional image pipeline;
-  manual runs can choose the Dagger image name and tag
-- The on-demand publication workflow runs the publication gate
+- `Project Checks` runs code quality, policy tests, and public readiness jobs
+- `Image Pipeline` builds and verifies a moving upstream candidate
+- `Production Admission` validates production lock changes and publication gate
+- `Production Pipeline` builds and verifies the pinned revision from `awx.lock.yml`
+- `Publication Gate` runs the on-demand publication gate
 
 Scheduled image builds do not publish images by default.
 Image archives and registry pushes are explicit Dagger functions; CI does not
