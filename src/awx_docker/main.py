@@ -113,8 +113,7 @@ class AwxDocker:
     @function
     async def public_hygiene(self, source: dagger.Directory) -> dagger.Directory:
         """Scan public-facing files and return public hygiene evidence."""
-        ctr = self._python(source).with_exec(["uv", "run", "awx-docker", "public-hygiene"])
-        return ctr.directory("build/evidence")
+        return self._with_public_hygiene_evidence(source).directory("build/evidence")
 
     @function
     async def image_build(
@@ -241,9 +240,23 @@ class AwxDocker:
         return ctr.directory("build/evidence")
 
     @function
-    async def evidence(self, source: dagger.Directory) -> dagger.Directory:
-        """Return generated evidence files."""
-        return source.directory("build/evidence")
+    async def evidence(
+        self,
+        source: dagger.Directory,
+        awx_repo: str = DEFAULT_AWX_REPO,
+        awx_ref: str = DEFAULT_AWX_REF,
+        image_name: str = DEFAULT_IMAGE_NAME,
+        image_tag: str = DEFAULT_IMAGE_TAG,
+        platform: str = DEFAULT_PLATFORM,
+    ) -> dagger.Directory:
+        """Generate lightweight evidence files and return the evidence directory."""
+        source, _ = await self._prepare_image_source(
+            source, image_name, image_tag, awx_repo, awx_ref, platform
+        )
+        return self._with_public_hygiene_evidence(source).directory("build/evidence")
+
+    def _with_public_hygiene_evidence(self, source: dagger.Directory) -> dagger.Container:
+        return self._python(source).with_exec(["uv", "run", "awx-docker", "public-hygiene"])
 
     def _python(self, source: dagger.Directory) -> dagger.Container:
         return (

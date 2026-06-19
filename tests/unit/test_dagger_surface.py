@@ -18,6 +18,10 @@ def public_dagger_functions() -> dict[str, ast.AsyncFunctionDef]:
     return functions
 
 
+def source_for(function: ast.AsyncFunctionDef) -> str:
+    return ast.unparse(function)
+
+
 def test_dagger_public_surface_is_small_and_documented() -> None:
     functions = public_dagger_functions()
 
@@ -36,3 +40,12 @@ def test_dagger_public_surface_is_small_and_documented() -> None:
     }
     for function in functions.values():
         assert ast.get_docstring(function)
+
+
+def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
+    evidence = public_dagger_functions()["evidence"]
+    source = source_for(evidence)
+
+    assert "_prepare_image_source" in source
+    assert "_with_public_hygiene_evidence" in source
+    assert 'source.directory("build/evidence")' not in source
