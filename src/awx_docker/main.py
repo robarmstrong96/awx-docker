@@ -86,6 +86,37 @@ class AwxDocker:
         return ctr.directory("build/evidence")
 
     @function
+    async def resolve_ref(
+        self,
+        source: dagger.Directory,
+        awx_repo: str = DEFAULT_AWX_REPO,
+        awx_ref: str = DEFAULT_AWX_REF,
+    ) -> str:
+        """Resolve an AWX branch, tag, or SHA to a concrete upstream SHA."""
+        return (
+            await self._python(source)
+            .with_exec(
+                [
+                    "uv",
+                    "run",
+                    "awx-docker",
+                    "resolve-ref",
+                    "--awx-repo",
+                    awx_repo,
+                    "--awx-ref",
+                    awx_ref,
+                ]
+            )
+            .stdout()
+        ).strip()
+
+    @function
+    async def public_hygiene(self, source: dagger.Directory) -> dagger.Directory:
+        """Scan public-facing files and return public hygiene evidence."""
+        ctr = self._python(source).with_exec(["uv", "run", "awx-docker", "public-hygiene"])
+        return ctr.directory("build/evidence")
+
+    @function
     async def image_build(
         self,
         source: dagger.Directory,
