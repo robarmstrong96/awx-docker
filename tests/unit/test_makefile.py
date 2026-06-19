@@ -35,3 +35,11 @@ def test_make_image_targets_are_dagger_shims() -> None:
         'dagger call image-verify --source=. --awx-ref="${AWX_REF:-devel}" '
         '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
     )
+
+
+def test_make_release_and_evidence_targets_are_dagger_shims() -> None:
+    assert (
+        dry_run("release-check")
+        == 'dagger call release-check --source=. --awx-ref="${AWX_REF:-devel}"'
+    )
+    assert dry_run("evidence") == "dagger call evidence --source=."
