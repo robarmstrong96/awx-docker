@@ -75,7 +75,11 @@ RUN dnf install -y 'dnf-command(config-manager)' && \
     xmlsec1-openssl-devel && \
     dnf -y clean all
 
-RUN mkdir -p ~/.ssh && chmod 0700 ~/.ssh && ssh-keyscan -T 10 github.com > ~/.ssh/known_hosts || true
+RUN mkdir -p ~/.ssh && \
+    chmod 0700 ~/.ssh && \
+    if ! ssh-keyscan -T 10 github.com > ~/.ssh/known_hosts; then \
+      :; \
+    fi
 RUN pip3.12 install -vv --no-cache-dir build
 
 COPY --from=awx-source /awx-src/Makefile /tmp/Makefile
