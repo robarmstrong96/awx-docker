@@ -27,7 +27,7 @@ def test_resolve_ref_prefers_branch_tag_and_peeled_tag(
     expected: str,
 ) -> None:
     def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(args=args, returncode=0, stdout=stdout, stderr="")
+        return subprocess.CompletedProcess(args=["git"], returncode=0, stdout=stdout, stderr="")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 

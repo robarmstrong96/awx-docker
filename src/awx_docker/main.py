@@ -18,6 +18,7 @@ class AwxDocker:
         ctr = self._tools(source)
         ctr = ctr.with_exec(["uv", "run", "ruff", "format", "--check", "."])
         ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
+        ctr = ctr.with_exec(["uv", "run", "pyright", "src", "tests"])
         ctr = ctr.with_exec(["uv", "run", "pytest"])
         ctr = ctr.with_exec(["shellcheck", "scripts/check-public-hygiene.sh"])
         ctr = ctr.with_exec(["shellcheck", "scripts/check-upstream-status.sh"])
