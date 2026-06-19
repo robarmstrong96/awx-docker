@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from awx_docker.upstream.policy import load_policy
+from awx_docker.upstream.provider_registry import select_provider
 from awx_docker.upstream.report import build_report, write_upstream_health
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,20 +43,20 @@ def test_build_failure_blocks() -> None:
     report = report_for("build-failure")
 
     assert report.decision.state == "fail"
-    assert report.signals.check_runs.failing == ["Build (failure)"]
+    assert report.signals.ci.blocking_failures == ["Build (failure)"]
 
 
 def test_sonarcloud_failure_is_non_blocking_evidence() -> None:
     report = report_for("non-blocking-failure", "publication")
 
     assert report.decision.state == "pass"
-    assert report.signals.check_runs.failing == []
-    assert report.signals.check_runs.non_blocking_failures == ["SonarCloud Code Analysis (failure)"]
+    assert report.signals.ci.blocking_failures == []
+    assert report.signals.ci.non_blocking_failures == ["SonarCloud Code Analysis (failure)"]
 
 
-def test_unclassified_failing_check_warns_and_publication_fails() -> None:
-    assert decision_for("failing-check", "scheduled-build") == "warn"
-    assert decision_for("failing-check", "local") == "warn"
+def test_unclassified_failing_check_blocks() -> None:
+    assert decision_for("failing-check", "scheduled-build") == "fail"
+    assert decision_for("failing-check", "local") == "fail"
     assert decision_for("failing-check", "publication") == "fail"
 
 
@@ -70,13 +71,13 @@ def test_check_run_classification_comes_from_policy() -> None:
 
     report = report_for("build-failure", policy=relaxed_policy)
 
-    assert report.signals.check_runs.failing == []
+    assert report.signals.ci.blocking_failures == []
     assert report.decision.state == "warn"
 
 
 def test_required_build_signal_warns_scheduled_and_fails_publication() -> None:
-    assert decision_for("failing-check", "scheduled-build") == "warn"
-    assert decision_for("failing-check", "publication") == "fail"
+    assert decision_for("no-build-success", "scheduled-build") == "warn"
+    assert decision_for("no-build-success", "publication") == "fail"
 
 
 def test_missing_signal_warns_scheduled_build_and_fails_publication() -> None:
@@ -88,7 +89,7 @@ def test_unresolvable_ref_writes_unknown_evidence(monkeypatch, tmp_path: Path) -
     def fail_resolve(repo: str, ref: str) -> str:
         raise RuntimeError("missing ref")
 
-    monkeypatch.setattr("awx_docker.upstream.report.resolve_ref", fail_resolve)
+    monkeypatch.setattr("awx_docker.upstream.providers.github.resolve_ref", fail_resolve)
 
     report = write_upstream_health(
         "https://github.com/ansible/awx.git",
@@ -99,5 +100,95 @@ def test_unresolvable_ref_writes_unknown_evidence(monkeypatch, tmp_path: Path) -
     )
 
     assert report.decision.state == "warn"
-    assert report.subject.resolved_sha == "unknown"
+    assert report.subject.resolved_revision == "unknown"
     assert (tmp_path / "upstream-health.json").exists()
+
+
+def test_auto_provider_selects_github_for_github_repositories() -> None:
+    provider_name, _ = select_provider("https://github.com/ansible/awx.git", "auto")
+
+    assert provider_name == "github"
+
+
+def test_auto_provider_selects_generic_git_for_other_repositories() -> None:
+    provider_name, _ = select_provider("https://git.example.test/awx.git", "auto")
+
+    assert provider_name == "generic-git"
+
+
+def test_generic_git_provider_warns_without_ci_signal(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        "awx_docker.upstream.providers.generic_git.resolve_ref",
+        lambda repo, ref: "b" * 40,
+    )
+
+    report = write_upstream_health(
+        "https://git.example.test/awx.git",
+        "devel",
+        tmp_path,
+        ROOT / "policies/upstream-health.yml",
+        "scheduled-build",
+        provider="generic-git",
+    )
+
+    assert report.provider.name == "generic-git"
+    assert report.decision.state == "warn"
+    assert report.signals.ci.available is False
+
+
+def test_generic_git_provider_fails_publication_without_ci_signal(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "awx_docker.upstream.providers.generic_git.resolve_ref",
+        lambda repo, ref: "b" * 40,
+    )
+
+    report = write_upstream_health(
+        "https://git.example.test/awx.git",
+        "devel",
+        tmp_path,
+        ROOT / "policies/upstream-health.yml",
+        "publication",
+        provider="generic-git",
+    )
+
+    assert report.decision.state == "fail"
+
+
+def test_file_provider_reads_normalized_signals(tmp_path: Path) -> None:
+    signal_file = tmp_path / "signals.json"
+    signal_file.write_text(
+        json.dumps(
+            {
+                "resolved_revision": "c" * 40,
+                "signals": {
+                    "ci": {
+                        "provider": "external-ci",
+                        "available": True,
+                        "total": 1,
+                        "blocking_failures": ["Container build (failure)"],
+                        "non_blocking_failures": [],
+                        "unknown_failures": [],
+                        "pending": [],
+                        "warnings": [],
+                        "required_success_observed": False,
+                        "required_success_missing": False,
+                    }
+                },
+            }
+        )
+    )
+
+    report = write_upstream_health(
+        "https://git.example.test/awx.git",
+        "devel",
+        tmp_path / "evidence",
+        ROOT / "policies/upstream-health.yml",
+        "scheduled-build",
+        provider="file",
+        signal_file=signal_file,
+    )
+
+    assert report.decision.state == "fail"
+    assert report.subject.resolved_revision == "c" * 40

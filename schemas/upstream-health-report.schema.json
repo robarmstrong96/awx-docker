@@ -29,19 +29,35 @@
       ],
       "type": "object"
     },
+    "provider": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "signal_source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "signal_source"
+      ],
+      "type": "object"
+    },
     "schema_version": {
-      "const": "awx-docker.upstream-health/v1"
+      "const": "awx-docker.upstream-health/v2"
     },
     "signals": {
       "additionalProperties": true,
       "properties": {
-        "check_runs": {
+        "ci": {
           "additionalProperties": true,
           "properties": {
             "available": {
               "type": "boolean"
             },
-            "failing": {
+            "blocking_failures": {
               "items": {
                 "type": "string"
               },
@@ -59,9 +75,24 @@
               },
               "type": "array"
             },
+            "provider": {
+              "type": "string"
+            },
+            "required_success_missing": {
+              "type": "boolean"
+            },
+            "required_success_observed": {
+              "type": "boolean"
+            },
             "total": {
               "minimum": 0,
               "type": "integer"
+            },
+            "unknown_failures": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             },
             "warnings": {
               "items": {
@@ -71,60 +102,42 @@
             }
           },
           "required": [
+            "provider",
             "available",
             "total",
-            "failing",
+            "blocking_failures",
             "non_blocking_failures",
+            "unknown_failures",
             "pending",
-            "warnings"
-          ],
-          "type": "object"
-        },
-        "combined_status": {
-          "additionalProperties": true,
-          "properties": {
-            "available": {
-              "type": "boolean"
-            },
-            "contexts": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "state": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "available",
-            "state",
-            "contexts"
+            "warnings",
+            "required_success_observed",
+            "required_success_missing"
           ],
           "type": "object"
         }
       },
       "required": [
-        "combined_status",
-        "check_runs"
+        "ci"
       ],
       "type": "object"
     },
     "subject": {
       "additionalProperties": true,
       "properties": {
-        "repo": {
+        "repository": {
           "type": "string"
         },
         "requested_ref": {
           "type": "string"
         },
-        "resolved_sha": {
+        "resolved_revision": {
           "type": "string"
         }
       },
       "required": [
-        "repo",
+        "repository",
         "requested_ref",
-        "resolved_sha"
+        "resolved_revision"
       ],
       "type": "object"
     },
@@ -138,6 +151,7 @@
   "required": [
     "schema_version",
     "subject",
+    "provider",
     "signals",
     "decision",
     "waiver"

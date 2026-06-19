@@ -6,32 +6,34 @@ DecisionState = Literal["pass", "warn", "wait", "fail", "unknown", "waived"]
 
 @dataclass(frozen=True)
 class UpstreamSubject:
-    repo: str
+    repository: str
     requested_ref: str
-    resolved_sha: str
+    resolved_revision: str
 
 
 @dataclass(frozen=True)
-class CombinedStatusSignal:
-    available: bool
-    state: str
-    contexts: int
+class UpstreamProvider:
+    name: str
+    signal_source: str
 
 
 @dataclass(frozen=True)
-class CheckRunSignal:
+class CiSignal:
+    provider: str
     available: bool
     total: int
-    failing: list[str] = field(default_factory=list)
+    blocking_failures: list[str] = field(default_factory=list)
     non_blocking_failures: list[str] = field(default_factory=list)
+    unknown_failures: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    required_success_observed: bool = False
+    required_success_missing: bool = False
 
 
 @dataclass(frozen=True)
 class UpstreamSignals:
-    combined_status: CombinedStatusSignal
-    check_runs: CheckRunSignal
+    ci: CiSignal
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,7 @@ class UpstreamDecision:
 class UpstreamHealthReport:
     schema_version: str
     subject: UpstreamSubject
+    provider: UpstreamProvider
     signals: UpstreamSignals
     decision: UpstreamDecision
     waiver: dict[str, Any] | None = None

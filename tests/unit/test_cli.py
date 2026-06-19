@@ -17,7 +17,7 @@ def test_release_check_prints_and_writes_blocking_reason(
     )
     monkeypatch.setattr(
         "awx_docker.cli.write_upstream_health",
-        lambda repo, ref, evidence, policy_path, mode, token: SimpleNamespace(
+        lambda *args, **kwargs: SimpleNamespace(
             decision=SimpleNamespace(
                 state="fail",
                 blocking=True,
@@ -28,8 +28,11 @@ def test_release_check_prints_and_writes_blocking_reason(
 
     rc = cmd_release_check(
         argparse.Namespace(
-            awx_repo="https://github.com/ansible/awx.git",
-            awx_ref="devel",
+            upstream_repository="https://github.com/ansible/awx.git",
+            upstream_ref="devel",
+            provider="auto",
+            signal_file=None,
+            resolved_revision=None,
             evidence_dir=str(tmp_path),
         )
     )

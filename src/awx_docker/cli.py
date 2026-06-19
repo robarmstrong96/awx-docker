@@ -48,12 +48,15 @@ def cmd_write_metadata(args: argparse.Namespace) -> int:
 
 def cmd_upstream_health(args: argparse.Namespace) -> int:
     report = write_upstream_health(
-        args.awx_repo,
-        args.awx_ref,
+        args.upstream_repository,
+        args.upstream_ref,
         evidence_dir(args.evidence_dir),
         root_dir() / "policies/upstream-health.yml",
         args.mode,
         os.environ.get("GITHUB_TOKEN"),
+        args.provider,
+        Path(args.signal_file) if args.signal_file else None,
+        args.resolved_revision,
     )
     print(f"upstream-health: {report.decision.state} ({report.decision.reason})")
     return 1 if report.decision.blocking else 0
@@ -71,18 +74,25 @@ def cmd_public_hygiene(args: argparse.Namespace) -> int:
 
 def cmd_release_check(args: argparse.Namespace) -> int:
     evidence = evidence_dir(args.evidence_dir)
+    upstream_repository = getattr(args, "upstream_repository", None) or getattr(
+        args, "awx_repo", DEFAULT_AWX_REPO
+    )
+    upstream_ref = getattr(args, "upstream_ref", None) or getattr(args, "awx_ref", DEFAULT_AWX_REF)
     hygiene = scan_public_hygiene(
         root_dir(),
         root_dir() / "policies/public-hygiene.yml",
         evidence,
     )
     upstream = write_upstream_health(
-        args.awx_repo,
-        args.awx_ref,
+        upstream_repository,
+        upstream_ref,
         evidence,
         root_dir() / "policies/upstream-health.yml",
         "publication",
         os.environ.get("GITHUB_TOKEN"),
+        getattr(args, "provider", "auto"),
+        Path(args.signal_file) if getattr(args, "signal_file", None) else None,
+        getattr(args, "resolved_revision", None),
     )
     failed = hygiene.status == "fail" or upstream.decision.blocking
     status = "fail" if failed else "pass"
@@ -145,8 +155,21 @@ def build_parser() -> argparse.ArgumentParser:
     metadata.set_defaults(func=cmd_write_metadata)
 
     upstream = sub.add_parser("upstream-health")
-    upstream.add_argument("--awx-repo", default=os.environ.get("AWX_REPO", DEFAULT_AWX_REPO))
-    upstream.add_argument("--awx-ref", default=os.environ.get("AWX_REF", DEFAULT_AWX_REF))
+    upstream.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    upstream.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    upstream.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
+    upstream.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
+    upstream.add_argument("--provider", default=os.environ.get("UPSTREAM_PROVIDER", "auto"))
+    upstream.add_argument("--signal-file", default=os.environ.get("UPSTREAM_SIGNAL_FILE"))
+    upstream.add_argument(
+        "--resolved-revision", default=os.environ.get("UPSTREAM_RESOLVED_REVISION")
+    )
     upstream.add_argument(
         "--mode",
         default=os.environ.get("UPSTREAM_HEALTH_MODE", "scheduled-build"),
@@ -159,8 +182,21 @@ def build_parser() -> argparse.ArgumentParser:
     hygiene.set_defaults(func=cmd_public_hygiene)
 
     release = sub.add_parser("release-check")
-    release.add_argument("--awx-repo", default=os.environ.get("AWX_REPO", DEFAULT_AWX_REPO))
-    release.add_argument("--awx-ref", default=os.environ.get("AWX_REF", DEFAULT_AWX_REF))
+    release.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    release.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    release.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
+    release.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
+    release.add_argument("--provider", default=os.environ.get("UPSTREAM_PROVIDER", "auto"))
+    release.add_argument("--signal-file", default=os.environ.get("UPSTREAM_SIGNAL_FILE"))
+    release.add_argument(
+        "--resolved-revision", default=os.environ.get("UPSTREAM_RESOLVED_REVISION")
+    )
     release.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     release.set_defaults(func=cmd_release_check)
 

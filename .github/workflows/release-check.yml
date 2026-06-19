@@ -22,4 +22,4 @@ jobs:
         with:
           version: "latest"
           verb: call
-          args: release-check --source=. --awx-ref=${{ inputs.awx_ref }}
+          args: release-check --source=. --upstream-ref=${{ inputs.awx_ref }}

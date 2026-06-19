@@ -1,27 +1,26 @@
 from pathlib import Path
 
 from awx_docker.evidence import write_env, write_json, write_markdown
-from awx_docker.git_refs import resolve_ref
 
-from .github_client import fetch_signals, write_raw
-from .models import UpstreamHealthReport, UpstreamSubject
-from .normalize import normalize_signals
+from .models import UpstreamHealthReport, UpstreamProvider, UpstreamSubject
+from .normalize import empty_signals, normalize_github_signals
 from .policy import decide, decide_unknown, load_policy
+from .provider_registry import select_provider
 
-SCHEMA_VERSION = "awx-docker.upstream-health/v1"
+SCHEMA_VERSION = "awx-docker.upstream-health/v2"
 
 
 def build_report(
-    repo: str,
+    repository: str,
     requested_ref: str,
-    resolved_sha: str,
+    resolved_revision: str,
     combined: dict,
     checks: dict,
     policy: dict,
     mode: str,
 ) -> UpstreamHealthReport:
     decisions = policy["decisions"]
-    signals = normalize_signals(
+    signals = normalize_github_signals(
         combined,
         checks,
         fail_conclusions=set(decisions["fail_on_check_conclusions"]),
@@ -32,7 +31,12 @@ def build_report(
     )
     return UpstreamHealthReport(
         schema_version=SCHEMA_VERSION,
-        subject=UpstreamSubject(repo=repo, requested_ref=requested_ref, resolved_sha=resolved_sha),
+        subject=UpstreamSubject(
+            repository=repository,
+            requested_ref=requested_ref,
+            resolved_revision=resolved_revision,
+        ),
+        provider=UpstreamProvider(name="github", signal_source="github-api"),
         signals=signals,
         decision=decide(signals, policy, mode),
         waiver=None,
@@ -40,82 +44,82 @@ def build_report(
 
 
 def write_upstream_health(
-    repo: str,
+    repository: str,
     requested_ref: str,
     evidence_dir: Path,
     policy_path: Path,
     mode: str,
     github_token: str | None = None,
+    provider: str = "auto",
+    signal_file: Path | None = None,
+    resolved_revision: str | None = None,
 ) -> UpstreamHealthReport:
     policy = load_policy(policy_path)
     try:
-        resolved_sha = resolve_ref(repo, requested_ref)
-    except Exception as exc:
-        resolved_sha = "unknown"
-        combined = {"state": "none", "statuses": []}
-        checks = {"check_runs": []}
-        report = build_report(repo, requested_ref, resolved_sha, combined, checks, policy, mode)
-        report = UpstreamHealthReport(
-            schema_version=report.schema_version,
-            subject=report.subject,
-            signals=report.signals,
-            decision=decide_unknown(f"Could not resolve upstream ref: {exc}", policy, mode),
-            waiver=None,
+        provider_name, collect = select_provider(repository, provider)
+        result = collect(
+            repository,
+            requested_ref,
+            policy=policy,
+            github_token=github_token,
+            evidence_dir=evidence_dir,
+            signal_file=signal_file,
+            resolved_revision=resolved_revision,
         )
-        _write_report(evidence_dir, report, repo, requested_ref, resolved_sha)
-        return report
-
-    try:
-        combined, checks = fetch_signals(
-            repo,
-            resolved_sha,
-            github_token,
-            checks_per_page=policy["github"]["check_runs"]["per_page"],
-        )
-        write_raw(evidence_dir / "upstream-raw", combined, checks)
     except Exception as exc:
-        combined = {"state": "none", "statuses": []}
-        checks = {"check_runs": []}
-        report = build_report(repo, requested_ref, resolved_sha, combined, checks, policy, mode)
         report = UpstreamHealthReport(
-            schema_version=report.schema_version,
-            subject=report.subject,
-            signals=report.signals,
+            schema_version=SCHEMA_VERSION,
+            subject=UpstreamSubject(
+                repository=repository,
+                requested_ref=requested_ref,
+                resolved_revision=resolved_revision or "unknown",
+            ),
+            provider=UpstreamProvider(name=provider, signal_source="unavailable"),
+            signals=empty_signals(provider),
             decision=decide_unknown(
-                f"Could not collect GitHub upstream signals: {exc}",
-                policy,
-                mode,
+                f"Could not collect upstream provider signals: {exc}", policy, mode
             ),
             waiver=None,
         )
-    else:
-        report = build_report(repo, requested_ref, resolved_sha, combined, checks, policy, mode)
+        _write_report(evidence_dir, report)
+        return report
 
-    _write_report(evidence_dir, report, repo, requested_ref, resolved_sha)
+    report = UpstreamHealthReport(
+        schema_version=SCHEMA_VERSION,
+        subject=UpstreamSubject(
+            repository=result.repository,
+            requested_ref=result.requested_ref,
+            resolved_revision=result.resolved_revision,
+        ),
+        provider=result.provider,
+        signals=result.signals,
+        decision=decide(result.signals, policy, mode),
+        waiver=None,
+    )
+    if provider_name != result.provider.name and result.provider.name != "file":
+        raise ValueError(f"provider mismatch: selected {provider_name}, got {result.provider.name}")
+    _write_report(evidence_dir, report)
     return report
 
 
-def _write_report(
-    evidence_dir: Path,
-    report: UpstreamHealthReport,
-    repo: str,
-    requested_ref: str,
-    resolved_sha: str,
-) -> None:
+def _write_report(evidence_dir: Path, report: UpstreamHealthReport) -> None:
     data = report.to_dict()
+    ci = report.signals.ci
     write_json(evidence_dir / "upstream-health.json", data)
     write_markdown(
         evidence_dir / "upstream-health.md",
-        "Upstream AWX Health",
+        "Upstream Health",
         {
-            "repo": f"`{repo}`",
-            "requested_ref": f"`{requested_ref}`",
-            "resolved_sha": f"`{resolved_sha}`",
-            "combined_status": f"`{report.signals.combined_status.state}`",
-            "check_runs": str(report.signals.check_runs.total),
-            "blocking_failures": str(len(report.signals.check_runs.failing)),
-            "non_blocking_failures": str(len(report.signals.check_runs.non_blocking_failures)),
-            "warnings": str(len(report.signals.check_runs.warnings)),
+            "repository": f"`{report.subject.repository}`",
+            "requested_ref": f"`{report.subject.requested_ref}`",
+            "resolved_revision": f"`{report.subject.resolved_revision}`",
+            "provider": f"`{report.provider.name}`",
+            "ci_available": f"`{str(ci.available).lower()}`",
+            "ci_total": str(ci.total),
+            "blocking_failures": str(len(ci.blocking_failures)),
+            "non_blocking_failures": str(len(ci.non_blocking_failures)),
+            "unknown_failures": str(len(ci.unknown_failures)),
+            "warnings": str(len(ci.warnings)),
             "decision": f"`{report.decision.state}`",
             "reason": report.decision.reason,
         },
@@ -123,9 +127,10 @@ def _write_report(
     write_env(
         evidence_dir / "upstream-health.env",
         {
-            "AWX_REPO": repo,
-            "AWX_REQUESTED_REF": requested_ref,
-            "AWX_RESOLVED_REF": resolved_sha,
+            "UPSTREAM_REPOSITORY": report.subject.repository,
+            "UPSTREAM_REQUESTED_REF": report.subject.requested_ref,
+            "UPSTREAM_RESOLVED_REVISION": report.subject.resolved_revision,
+            "UPSTREAM_PROVIDER": report.provider.name,
             "UPSTREAM_HEALTH_STATE": report.decision.state,
             "UPSTREAM_HEALTH_BLOCKING": str(report.decision.blocking).lower(),
             "UPSTREAM_HEALTH_REASON": report.decision.reason,

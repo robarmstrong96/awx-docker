@@ -2,7 +2,7 @@
 
 Dagger is the project command surface and CI orchestration layer.
 
-Python owns policy decisions, GitHub signal normalization, report generation,
+Python owns policy decisions, upstream provider normalization, report generation,
 public readiness checks, and evidence writing.
 
 The Dockerfile assembles the image. Named helpers under `docker/awx/bin` handle

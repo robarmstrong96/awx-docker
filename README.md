@@ -14,10 +14,10 @@ We utilize Dagger for building and testing the image. Install Dagger from https:
 
 ```bash
 dagger call check --source=.
-dagger call upstream-health --source=. --awx-ref=devel
+dagger call upstream-health --source=. --upstream-ref=devel
 dagger call image-build --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
 dagger call image-verify --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
-dagger call publication-gate --source=. --awx-ref=devel
+dagger call publication-gate --source=. --upstream-ref=devel
 ```
 
 ## Optional Make aliases
@@ -40,6 +40,7 @@ Example defaults for the build:
 
 - AWX repo: `https://github.com/ansible/awx.git`
 - AWX ref: `devel`
+- Upstream health provider: `auto`
 - Image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 

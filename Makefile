@@ -19,7 +19,7 @@ test:
 	@dagger call test --source=.
 
 upstream-health:
-	@dagger call upstream-health --source=. --awx-ref="$${AWX_REF:-devel}"
+	@dagger call upstream-health --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}"
 
 build:
 	@dagger call image-build --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
@@ -31,7 +31,7 @@ public-readiness:
 	@dagger call public-readiness --source=.
 
 publication-gate:
-	@dagger call publication-gate --source=. --awx-ref="$${AWX_REF:-devel}"
+	@dagger call publication-gate --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}"
 
 evidence:
 	@dagger call evidence --source=.

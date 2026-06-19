@@ -61,29 +61,37 @@ class AwxDocker:
     async def upstream_health(
         self,
         source: dagger.Directory,
-        awx_repo: str = DEFAULT_AWX_REPO,
-        awx_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
         mode: str = "scheduled-build",
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
-        """Evaluate upstream AWX health and return evidence files."""
+        """Evaluate upstream repository health and return evidence files."""
         ctr = self._python(source)
         if github_token is not None:
             ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
-        ctr = ctr.with_exec(
-            [
-                "uv",
-                "run",
-                "awx-docker",
-                "upstream-health",
-                "--awx-repo",
-                awx_repo,
-                "--awx-ref",
-                awx_ref,
-                "--mode",
-                mode,
-            ]
-        )
+        args = [
+            "uv",
+            "run",
+            "awx-docker",
+            "upstream-health",
+            "--upstream-repository",
+            upstream_repository,
+            "--upstream-ref",
+            upstream_ref,
+            "--provider",
+            provider,
+            "--mode",
+            mode,
+        ]
+        if signal_file:
+            args.extend(["--signal-file", signal_file])
+        if resolved_revision:
+            args.extend(["--resolved-revision", resolved_revision])
+        ctr = ctr.with_exec(args)
         return ctr.directory("build/evidence")
 
     @function
@@ -223,38 +231,57 @@ class AwxDocker:
     async def release_check(
         self,
         source: dagger.Directory,
-        awx_ref: str = DEFAULT_AWX_REF,
-        awx_repo: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Run checks required before making the repository or image public."""
         ctr = self._python(source)
         if github_token is not None:
             ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
-        ctr = ctr.with_exec(
-            [
-                "uv",
-                "run",
-                "awx-docker",
-                "release-check",
-                "--awx-repo",
-                awx_repo,
-                "--awx-ref",
-                awx_ref,
-            ]
-        )
+        args = [
+            "uv",
+            "run",
+            "awx-docker",
+            "release-check",
+            "--upstream-repository",
+            upstream_repository,
+            "--upstream-ref",
+            upstream_ref,
+            "--provider",
+            provider,
+        ]
+        if signal_file:
+            args.extend(["--signal-file", signal_file])
+        if resolved_revision:
+            args.extend(["--resolved-revision", resolved_revision])
+        ctr = ctr.with_exec(args)
         return ctr.directory("build/evidence")
 
     @function
     async def publication_gate(
         self,
         source: dagger.Directory,
-        awx_ref: str = DEFAULT_AWX_REF,
-        awx_repo: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Run checks required before public repository or image publication."""
-        return await self.release_check(source, awx_ref, awx_repo, github_token)
+        return await self.release_check(
+            source,
+            upstream_ref,
+            upstream_repository,
+            provider,
+            signal_file,
+            resolved_revision,
+            github_token,
+        )
 
     @function
     async def evidence(

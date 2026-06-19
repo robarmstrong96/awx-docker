@@ -21,10 +21,12 @@ def test_make_check_is_dagger_alias() -> None:
 
 
 def test_make_upstream_health_is_dagger_alias() -> None:
-    assert (
-        dry_run("upstream-health")
-        == 'dagger call upstream-health --source=. --awx-ref="${AWX_REF:-devel}"'
+    expected = (
+        'dagger call upstream-health --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
+        '--provider="${UPSTREAM_PROVIDER:-auto}"'
     )
+
+    assert dry_run("upstream-health") == expected
 
 
 def test_make_image_targets_are_dagger_aliases() -> None:
@@ -40,10 +42,12 @@ def test_make_image_targets_are_dagger_aliases() -> None:
 
 def test_make_publication_targets_are_dagger_aliases() -> None:
     assert dry_run("public-readiness") == "dagger call public-readiness --source=."
-    assert (
-        dry_run("publication-gate")
-        == 'dagger call publication-gate --source=. --awx-ref="${AWX_REF:-devel}"'
+    expected = (
+        'dagger call publication-gate --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
+        '--provider="${UPSTREAM_PROVIDER:-auto}"'
     )
+
+    assert dry_run("publication-gate") == expected
     assert dry_run("evidence") == "dagger call evidence --source=."
 
 

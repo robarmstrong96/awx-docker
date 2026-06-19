@@ -96,7 +96,7 @@ def test_upstream_health_schema_requires_nested_contract() -> None:
         load_policy(ROOT / "policies/upstream-health.yml"),
         "scheduled-build",
     ).to_dict()
-    del report["signals"]["check_runs"]["failing"]
+    del report["signals"]["ci"]["blocking_failures"]
 
     with pytest.raises(ValidationError):
         validate(report, schema("upstream-health-report"))
@@ -137,19 +137,22 @@ def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> 
     )
     monkeypatch.setattr(
         "awx_docker.cli.write_upstream_health",
-        lambda repo, ref, evidence, policy_path, mode, token: SimpleNamespace(
+        lambda *args, **kwargs: SimpleNamespace(
             decision=SimpleNamespace(
                 state="pass",
                 blocking=False,
-                reason="No failing or incomplete upstream statuses/check runs were found.",
+                reason="No blocking upstream provider signals were found.",
             )
         ),
     )
 
     rc = cmd_release_check(
         argparse.Namespace(
-            awx_repo="https://github.com/ansible/awx.git",
-            awx_ref="devel",
+            upstream_repository="https://github.com/ansible/awx.git",
+            upstream_ref="devel",
+            provider="auto",
+            signal_file=None,
+            resolved_revision=None,
             evidence_dir=str(tmp_path),
         )
     )
