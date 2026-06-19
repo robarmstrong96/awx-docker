@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${AWX_REPO:?AWX_REPO is required}"
+: "${AWX_REF:?AWX_REF is required}"
+: "${AWX_REQUESTED_REF:?AWX_REQUESTED_REF is required}"
+
+git init /awx-src
+git -C /awx-src remote add origin "$AWX_REPO"
+git -C /awx-src fetch --depth 1 origin "$AWX_REF"
+git -C /awx-src checkout --detach FETCH_HEAD
+git -C /awx-src rev-parse HEAD >/awx-src/.awx_source_revision
+printf '%s\n' "$AWX_REQUESTED_REF" >/awx-src/.awx_requested_ref

@@ -1,0 +1,10 @@
+{
+  "total_count": 1,
+  "check_runs": [
+    {
+      "name": "integration",
+      "status": "in_progress",
+      "conclusion": null
+    }
+  ]
+}

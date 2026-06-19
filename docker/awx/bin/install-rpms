@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+package_file="${1:?package list path required}"
+
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial 2>/dev/null || :
+
+if [[ "${INSTALL_RPMS_ENABLE_CRB:-true}" == "true" ]]; then
+	dnf install -y 'dnf-command(config-manager)'
+	dnf config-manager --set-enabled crb
+fi
+
+if [[ "${INSTALL_RPMS_ENABLE_NODEJS18:-false}" == "true" ]]; then
+	dnf module -y enable nodejs:18
+	dnf module -y install nodejs:18/common
+fi
+
+mapfile -t packages < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$package_file")
+if ((${#packages[@]} > 0)); then
+	dnf -y install "${packages[@]}"
+fi
+
+if [[ "${INSTALL_RPMS_INSTALL_INOTIFY:-false}" == "true" ]]; then
+	dnf -y install epel-next-release
+	dnf -y install inotify-tools
+	dnf -y remove epel-next-release
+fi
+
+dnf -y clean all

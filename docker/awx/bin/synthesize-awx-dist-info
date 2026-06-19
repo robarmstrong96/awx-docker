@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+revision="${1:?AWX source revision is required}"
+awx_version="0.0.dev0+g${revision}"
+site_packages="/var/lib/awx/venv/awx/lib/python3.12/site-packages"
+dist_info="${site_packages}/awx-${awx_version}.dist-info"
+
+install -d -m 0755 "$dist_info"
+printf 'Metadata-Version: 2.1\nName: awx\nVersion: %s\n' "$awx_version" >"$dist_info/METADATA"
+printf '[console_scripts]\nawx-manage = awx:manage\n' >"$dist_info/entry_points.txt"
+printf 'awx\n' >"$dist_info/top_level.txt"
+printf 'awx-docker\n' >"$dist_info/INSTALLER"
+touch "$dist_info/RECORD"
+printf '/awx_devel\n' >"$site_packages/awx.egg-link"
+printf '/awx_devel\n' >"$site_packages/awx-devel.pth"
+ln -sf /awx_devel/tools/docker-compose/awx-manage /usr/local/bin/awx-manage
+ln -sf /awx_devel/tools/scripts/awx-python /usr/bin/awx-python
+ln -sf /awx_devel/tools/scripts/rsyslog-4xx-recovery /usr/bin/rsyslog-4xx-recovery
+sed -i 's/\r$//' /usr/local/bin/awx-wrapper-entrypoint
+chmod 0755 /usr/local/bin/awx-wrapper-entrypoint

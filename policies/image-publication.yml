@@ -1,0 +1,13 @@
+schema: awx-docker.image-publication/v1
+
+visibility:
+  manual_only: true
+
+required_checks:
+  - public-hygiene
+  - upstream-health
+  - image-verification
+
+branding:
+  official_claims_allowed: false
+  logos_allowed: false

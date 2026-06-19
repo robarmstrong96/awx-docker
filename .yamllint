@@ -1,0 +1,11 @@
+---
+extends: default
+
+ignore: |
+  .venv/
+  build/
+
+rules:
+  document-start: disable
+  line-length:
+    max: 180

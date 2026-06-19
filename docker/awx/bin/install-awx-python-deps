@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install -d -m 0700 ~/.ssh
+if ! ssh-keyscan -T 10 github.com >~/.ssh/known_hosts; then
+	:
+fi
+
+pip3.12 install -vv --no-cache-dir build
+make requirements_awx
+make requirements_awx_dev

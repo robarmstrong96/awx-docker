@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+for dir in \
+	/var/lib/awx \
+	/var/lib/awx/rsyslog \
+	/var/lib/awx/rsyslog/conf.d \
+	/var/lib/awx/.local/share/containers/storage \
+	/var/run/awx-rsyslog \
+	/var/log/nginx \
+	/var/lib/pgsql \
+	/var/run/supervisor \
+	/var/run/awx-receptor \
+	/var/lib/nginx; do
+	install -d -m 0775 -g root "$dir"
+	chmod g+rwx "$dir"
+done
+
+for file in \
+	/etc/subuid \
+	/etc/subgid \
+	/etc/group \
+	/etc/passwd \
+	/var/lib/awx/rsyslog/rsyslog.conf; do
+	touch "$file"
+	chmod g+rw "$file"
+	chgrp root "$file"
+done
+
+for dir in \
+	/var/lib/awx/.local \
+	/var/lib/awx/venv \
+	/var/lib/awx/venv/awx/bin \
+	/var/lib/awx/venv/awx/lib/python3.12 \
+	/var/lib/awx/venv/awx/lib/python3.12/site-packages \
+	/var/lib/awx/projects \
+	/var/lib/awx/rsyslog \
+	/var/run/awx-rsyslog \
+	/.ansible \
+	/var/lib/shared/overlay-images \
+	/var/lib/shared/overlay-layers \
+	/var/lib/shared/vfs-images \
+	/var/lib/shared/vfs-layers \
+	/var/lib/awx/vendor; do
+	install -d -m 0775 -g root "$dir"
+	chmod g+rwx "$dir"
+done
+
+for file in \
+	/var/lib/shared/overlay-images/images.lock \
+	/var/lib/shared/overlay-layers/layers.lock \
+	/var/lib/shared/vfs-images/images.lock \
+	/var/lib/shared/vfs-layers/layers.lock \
+	/var/run/nginx.pid; do
+	touch "$file"
+	chmod g+rw "$file"
+done
+
+printf "\\setenv PAGER 'less -SXF'\n" >/var/lib/awx/.psqlrc

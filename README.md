@@ -1,51 +1,43 @@
-# AWX Docker Image Builder
+# AWX Docker Proof-of-Concept Image Builder
 
-This repo builds an unofficial AWX development image from upstream AWX.
+This repository builds an unofficial proof-of-concept AWX container image for
+local testing and CI experimentation.
 
-It does not vendor AWX. The `Dockerfile` clones `ansible/awx` during the Docker build.
+It is not affiliated with, endorsed by, or supported by Red Hat, Ansible, or the
+AWX project. It is not intended for production use.
+
+For normal AWX installation and lifecycle management, use the AWX Operator.
 
 ## Basic Use
 
 ```bash
-make preflight
+dagger call check --source=.
+dagger call upstream-health --source=. --awx-ref=devel
+dagger call image-build --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
+dagger call image-verify --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
+```
+
+Compatibility shims:
+
+```bash
+make check
 make build
 make verify-image
+make upstream-health
 ```
 
-Default output:
+## Defaults
 
-```text
-awx-devel:devel
-```
+- AWX repo: `https://github.com/ansible/awx.git`
+- AWX ref: `devel`
+- Image tag: `awx-devel:devel`
+- Dockerfile: `docker/awx/Dockerfile`
 
-To build a registry tag:
+The build clones upstream AWX during the Docker image build. This repository
+does not vendor the AWX source tree.
 
-```bash
-IMAGE_NAME=ghcr.io/YOUR_ORG/awx-devel IMAGE_TAG=devel make build
-make verify-image
-```
+## Notices
 
-Push is separate on purpose:
-
-```bash
-IMAGE_NAME=ghcr.io/YOUR_ORG/awx-devel IMAGE_TAG=devel make push
-```
-
-## Useful Commands
-
-```bash
-make doctor
-make preflight
-make resolve-ref
-make build
-make verify-image
-make push
-make print-tags
-```
-
-## Notes
-
-- This is not an official AWX, Ansible, or Red Hat image.
-- AWX upstream still recommends the AWX Operator for real deployments.
-- Wrapper files in this repo are licensed under Apache-2.0.
-- Built images include AWX source from `ansible/awx` and retain the AWX license and source revision in `/usr/share/licenses/awx-wrapper/`.
+Wrapper files in this repository are licensed under Apache-2.0. Built images
+include upstream AWX source and retain upstream license and source revision
+metadata under `/usr/share/licenses/awx-wrapper/`.

@@ -2,63 +2,63 @@
 set -euo pipefail
 
 require_env() {
-  local missing=0
-  for name in "$@"; do
-    if [[ -z "${!name:-}" ]]; then
-      printf 'missing required environment variable: %s\n' "$name" >&2
-      missing=1
-    fi
-  done
-  return "$missing"
+	local missing=0
+	for name in "$@"; do
+		if [[ -z "${!name:-}" ]]; then
+			printf 'missing required environment variable: %s\n' "$name" >&2
+			missing=1
+		fi
+	done
+	return "$missing"
 }
 
 write_dynamic_users() {
-  if [[ "$(id -u)" -lt 500 && -n "${CURRENT_UID:-}" ]]; then
-    return
-  fi
+	if [[ "$(id -u)" -lt 500 && -n "${CURRENT_UID:-}" ]]; then
+		return
+	fi
 
-  local awx_uid awx_gid nginx_uid nginx_gid
-  awx_uid="$(id -u)"
-  awx_gid="$(id -g)"
-  nginx_uid="$(id -u nginx 2>/dev/null || printf '999')"
-  nginx_gid="$(id -g nginx 2>/dev/null || printf '999')"
+	local awx_uid awx_gid nginx_uid nginx_gid
+	awx_uid="$(id -u)"
+	awx_gid="$(id -g)"
+	nginx_uid="$(id -u nginx 2>/dev/null || printf '999')"
+	nginx_gid="$(id -g nginx 2>/dev/null || printf '999')"
 
-  cat > /etc/passwd <<EOF
+	cat >/etc/passwd <<EOF
 root:x:0:0:root:/root:/bin/bash
 awx:x:${awx_uid}:${awx_gid}:,,,:/var/lib/awx:/bin/bash
 nginx:x:${nginx_uid}:${nginx_gid}:Nginx web server:/var/lib/nginx:/sbin/nologin
 EOF
 
-  cat >> /etc/group <<EOF
+	cat >>/etc/group <<EOF
 awx:x:${awx_uid}:awx
 EOF
 
-  cat > /etc/subuid <<'EOF'
+	cat >/etc/subuid <<'EOF'
 awx:100000:50001
 EOF
 
-  cat > /etc/subgid <<'EOF'
+	cat >/etc/subgid <<'EOF'
 awx:100000:50001
 EOF
 }
 
 write_awx_config() {
-  require_env \
-    AWX_BROKER_URL \
-    AWX_BROADCAST_WEBSOCKET_SECRET \
-    AWX_CACHE_URL \
-    AWX_CSRF_TRUSTED_ORIGIN \
-    AWX_DB_HOST \
-    AWX_DB_NAME \
-    AWX_DB_PASSWORD \
-    AWX_DB_PORT \
-    AWX_DB_USER \
-    AWX_SECRET_KEY \
-    AWX_SYSTEM_UUID
+	require_env \
+		AWX_BROKER_URL \
+		AWX_BROADCAST_WEBSOCKET_SECRET \
+		AWX_CACHE_URL \
+		AWX_CSRF_TRUSTED_ORIGIN \
+		AWX_DB_HOST \
+		AWX_DB_NAME \
+		AWX_DB_PASSWORD \
+		AWX_DB_PORT \
+		AWX_DB_USER \
+		AWX_SECRET_KEY \
+		AWX_SYSTEM_UUID
 
-  install -d -m 0755 /etc/tower /etc/tower/conf.d /etc/receptor /etc/nginx/conf.d /var/run/redis
+	install -d -m 0755 /etc/tower /etc/tower/conf.d /etc/receptor /etc/nginx/conf.d /var/run/redis
 
-  cat > /etc/tower/conf.d/database.py <<'PY'
+	cat >/etc/tower/conf.d/database.py <<'PY'
 import os
 
 DATABASES = {
@@ -77,7 +77,7 @@ if os.environ.get("AWX_DB_SSLMODE"):
     DATABASES["default"]["OPTIONS"] = {"sslmode": os.environ["AWX_DB_SSLMODE"]}
 PY
 
-  cat > /etc/tower/conf.d/local_settings.py <<'PY'
+	cat >/etc/tower/conf.d/local_settings.py <<'PY'
 import os
 
 SYSTEM_UUID = os.environ["AWX_SYSTEM_UUID"]
@@ -112,14 +112,14 @@ BROADCAST_WEBSOCKET_PROTOCOL = "http"
 STATIC_URL = "/static/"
 PY
 
-  cat > /etc/tower/conf.d/websocket_secret.py <<'PY'
+	cat >/etc/tower/conf.d/websocket_secret.py <<'PY'
 import os
 
 BROADCAST_WEBSOCKET_SECRET = os.environ["AWX_BROADCAST_WEBSOCKET_SECRET"]
 PY
 
-  printf '%s' "$AWX_SECRET_KEY" > /etc/tower/SECRET_KEY
-  touch /etc/receptor/receptor.conf.lock
+	printf '%s' "$AWX_SECRET_KEY" >/etc/tower/SECRET_KEY
+	touch /etc/receptor/receptor.conf.lock
 }
 
 write_dynamic_users

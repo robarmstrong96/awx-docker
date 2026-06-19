@@ -1,0 +1,26 @@
+schema: awx-docker.public-hygiene/v1
+
+forbidden_patterns:
+  - name: local-home-path
+    pattern: "/home/"
+    severity: fail
+
+  - name: dotenv-reference
+    pattern: "(?<![A-Za-z0-9_])\\.env(?![A-Za-z0-9_])"
+    severity: warn
+    allowed_paths:
+      - ".gitignore"
+      - ".dockerignore"
+      - ".env.example"
+      - "README.md"
+
+  - name: host-awx-cache
+    pattern: "\\.cache/awx-docker|AWX_DIR|upstream/awx"
+    severity: fail
+
+required_files:
+  - LICENSE
+  - NOTICE
+  - README.md
+  - docs/licensing.md
+  - docs/public-release.md

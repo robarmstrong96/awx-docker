@@ -1,0 +1,52 @@
+schema: awx-docker.upstream-health/v1
+
+github:
+  combined_status:
+    enabled: true
+    missing: warn
+
+  check_runs:
+    enabled: true
+    missing: warn
+    per_page: 100
+
+decisions:
+  fail_on_combined_states:
+    - failure
+    - error
+
+  wait_on_combined_states:
+    - pending
+
+  fail_on_check_conclusions:
+    - failure
+    - cancelled
+    - timed_out
+    - action_required
+    - startup_failure
+
+  wait_on_check_statuses:
+    - queued
+    - in_progress
+    - pending
+    - requested
+    - waiting
+
+modes:
+  scheduled-build:
+    unknown_signal: warn
+    warning_signal: warn
+    wait_signal: fail
+    fail_signal: fail
+
+  local:
+    unknown_signal: warn
+    warning_signal: warn
+    wait_signal: warn
+    fail_signal: fail
+
+  publication:
+    unknown_signal: fail
+    warning_signal: fail
+    wait_signal: fail
+    fail_signal: fail

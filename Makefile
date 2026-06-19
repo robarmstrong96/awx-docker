@@ -1,37 +1,31 @@
-.PHONY: doctor preflight public-hygiene check-upstream-status resolve-ref write-metadata write-runner-diagnostics build verify-image push published-digest print-tags
+.PHONY: check format lint test upstream-health build verify-image release-check evidence help
 
-doctor:
-	@./scripts/image.sh doctor
+help:
+	@dagger functions
 
-preflight:
-	@./scripts/image.sh preflight
+check:
+	@dagger call check --source=.
 
-public-hygiene:
-	@./scripts/check-public-hygiene.sh
+format:
+	@dagger call format --source=.
 
-check-upstream-status:
-	@./scripts/check-upstream-status.sh
+lint:
+	@dagger call lint --source=.
 
-resolve-ref:
-	@./scripts/image.sh resolve-ref
+test:
+	@dagger call test --source=.
 
-write-metadata:
-	@./scripts/image.sh write-metadata
-
-write-runner-diagnostics:
-	@./scripts/image.sh write-runner-diagnostics
+upstream-health:
+	@dagger call upstream-health --source=. --awx-ref="$${AWX_REF:-devel}"
 
 build:
-	@./scripts/image.sh build
+	@dagger call image-build --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
 
 verify-image:
-	@./scripts/image.sh verify-image
+	@dagger call image-verify --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
 
-push:
-	@./scripts/image.sh push
+release-check:
+	@dagger call release-check --source=. --awx-ref="$${AWX_REF:-devel}"
 
-published-digest:
-	@./scripts/image.sh published-digest
-
-print-tags:
-	@./scripts/image.sh print-tags
+evidence:
+	@dagger call evidence --source=.
