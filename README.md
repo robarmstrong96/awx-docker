@@ -10,6 +10,8 @@ For normal AWX installation and lifecycle management, use the AWX Operator.
 
 ## Basic Use
 
+We utilize Dagger for building and testing the image. Install Dagger from https://dagger.io.
+
 ```bash
 dagger call check --source=.
 dagger call upstream-health --source=. --awx-ref=devel
@@ -20,6 +22,8 @@ dagger call release-check --source=. --awx-ref=devel
 
 Compatibility shims:
 
+These commands are provided for convenience and compatibility with existing Makefile-based workflows. Likely will be removed in the future.
+
 ```bash
 make check
 make build
@@ -29,6 +33,8 @@ make release-check
 ```
 
 ## Defaults
+
+Example defaults for the build:
 
 - AWX repo: `https://github.com/ansible/awx.git`
 - AWX ref: `devel`
