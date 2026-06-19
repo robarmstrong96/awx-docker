@@ -2,8 +2,123 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
   "properties": {
+    "decision": {
+      "additionalProperties": true,
+      "properties": {
+        "blocking": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pass",
+            "warn",
+            "wait",
+            "fail",
+            "unknown",
+            "waived"
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "blocking",
+        "reason"
+      ],
+      "type": "object"
+    },
     "schema_version": {
       "const": "awx-docker.upstream-health/v1"
+    },
+    "signals": {
+      "additionalProperties": true,
+      "properties": {
+        "check_runs": {
+          "additionalProperties": true,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "failing": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "pending": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "total": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "available",
+            "total",
+            "failing",
+            "pending"
+          ],
+          "type": "object"
+        },
+        "combined_status": {
+          "additionalProperties": true,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "contexts": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "state": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "available",
+            "state",
+            "contexts"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "combined_status",
+        "check_runs"
+      ],
+      "type": "object"
+    },
+    "subject": {
+      "additionalProperties": true,
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "requested_ref": {
+          "type": "string"
+        },
+        "resolved_sha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo",
+        "requested_ref",
+        "resolved_sha"
+      ],
+      "type": "object"
+    },
+    "waiver": {
+      "type": [
+        "object",
+        "null"
+      ]
     }
   },
   "required": [

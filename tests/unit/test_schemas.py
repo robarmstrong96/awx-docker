@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from jsonschema import validate
+import pytest
+from jsonschema import ValidationError, validate
 
 from awx_docker.cli import cmd_release_check
 from awx_docker.image.metadata import write_build_metadata
@@ -63,6 +64,41 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         },
     }
     validate(image_verification, schema("image-verification"))
+
+
+def test_build_metadata_schema_requires_nested_contract(tmp_path: Path) -> None:
+    metadata = write_build_metadata(
+        tmp_path,
+        tmp_path / "evidence",
+        "awx-devel",
+        "devel",
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        "linux/amd64",
+    )
+    del metadata["awx"]["resolved_ref"]
+
+    with pytest.raises(ValidationError):
+        validate(metadata, schema("build-metadata"))
+
+
+def test_upstream_health_schema_requires_nested_contract() -> None:
+    combined = json.loads((ROOT / "tests/fixtures/github/healthy/combined-status.json").read_text())
+    checks = json.loads((ROOT / "tests/fixtures/github/healthy/check-runs.json").read_text())
+    report = build_report(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "b" * 40,
+        combined,
+        checks,
+        load_policy(ROOT / "policies/upstream-health.yml"),
+        "scheduled-build",
+    ).to_dict()
+    del report["signals"]["check_runs"]["failing"]
+
+    with pytest.raises(ValidationError):
+        validate(report, schema("upstream-health-report"))
 
 
 def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> None:
