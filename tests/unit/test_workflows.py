@@ -52,9 +52,17 @@ def test_evidence_workflows_upload_artifacts() -> None:
     for name in evidence_workflows:
         data = workflow(name)
         for job in data["jobs"].values():
-            assert any(step.get("uses") == "actions/upload-artifact@v4" for step in job["steps"])
+            upload_steps = [
+                step for step in job["steps"] if step.get("uses") == "actions/upload-artifact@v4"
+            ]
+            assert upload_steps
+            assert all(step.get("continue-on-error") is True for step in upload_steps)
 
     public_readiness = workflow("project-checks.yml")["jobs"]["public-readiness"]
-    assert any(
-        step.get("uses") == "actions/upload-artifact@v4" for step in public_readiness["steps"]
-    )
+    upload_steps = [
+        step
+        for step in public_readiness["steps"]
+        if step.get("uses") == "actions/upload-artifact@v4"
+    ]
+    assert upload_steps
+    assert all(step.get("continue-on-error") is True for step in upload_steps)
