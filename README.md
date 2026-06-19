@@ -54,6 +54,8 @@ Production-style builds use `awx.lock.yml`. That file pins the exact upstream
 AWX revision; production commands build from the pinned SHA instead of the
 floating branch name.
 
+See `docs/production-branch.md` for the protected production branch model.
+
 ## Notices
 
 Wrapper files in this repository are licensed under Apache-2.0. Built images
