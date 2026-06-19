@@ -14,10 +14,11 @@ We utilize Dagger for building and testing the image. Install Dagger from https:
 
 ```bash
 dagger call check --source=.
-dagger call upstream-health --source=. --upstream-ref=devel --provider=auto
-dagger call image-pipeline --source=. --upstream-ref=devel --provider=auto --image-name=awx-devel --image-tag=devel export --path=build/evidence
+dagger call upstream-health --source=. --upstream-repository=https://github.com/ansible/awx.git --upstream-ref=devel --provider=auto
+dagger call image-pipeline --source=. --upstream-ref=devel export --path=build/evidence
+dagger call public-readiness --source=. export --path=build/evidence
+dagger call publication-gate --source=. export --path=build/evidence
 dagger call image-export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
-dagger call publication-gate --source=. --upstream-ref=devel
 dagger call promote-candidate --source=. --upstream-ref=devel
 dagger call production-admission --source=. export --path=build/evidence
 dagger call production-pipeline --source=. export --path=build/evidence
@@ -49,6 +50,13 @@ Example defaults for the build:
 
 The build clones upstream AWX during the Docker image build. This repository
 does not vendor the AWX source tree.
+
+## Branch Model
+
+`development` follows moving upstream AWX refs for integration and testing.
+
+`production` builds only from `awx.lock.yml` pinned revisions and accepts
+changes through protected pull requests.
 
 Production-style builds use `awx.lock.yml`. That file pins the exact upstream
 AWX revision; production commands build from the pinned SHA instead of the

@@ -3,6 +3,9 @@
 `dagger call upstream-health --source=. --upstream-ref=devel` checks provider
 signals for the resolved upstream ref.
 
+GitHub is one provider for upstream-health signals, not the upstream-health
+model itself.
+
 Provider selection:
 
 - `auto`: use GitHub checks for `github.com` repositories, otherwise use generic Git

@@ -12,3 +12,6 @@ Shell remains only for runtime scripts and container helper glue.
 
 Evidence is written as canonical JSON for machines and short Markdown for
 humans.
+
+Production promotion is lock-file based. `production` builds from
+`awx.lock.yml` pinned revisions instead of rediscovering floating upstream refs.
