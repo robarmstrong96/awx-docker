@@ -9,7 +9,11 @@ from jsonschema import ValidationError, validate
 
 from awx_docker.cli import cmd_release_check
 from awx_docker.image.metadata import write_build_metadata
-from awx_docker.image.pipeline import write_image_pipeline, write_upstream_ref
+from awx_docker.image.pipeline import (
+    write_image_pipeline,
+    write_published_image,
+    write_upstream_ref,
+)
 from awx_docker.public_hygiene.scan import scan_public_hygiene
 from awx_docker.upstream.policy import load_policy
 from awx_docker.upstream.report import build_report
@@ -73,6 +77,16 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         "linux/amd64",
     )
     validate(image_pipeline, schema("image-pipeline"))
+
+    published_image = write_published_image(
+        evidence,
+        "ghcr.io/example/awx-devel:devel",
+        "ghcr.io/example/awx-devel:devel@sha256:" + "f" * 64,
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "f" * 40,
+    )
+    validate(published_image, schema("published-image"))
 
     image_verification = {
         "schema_version": "awx-docker.image-verification/v1",

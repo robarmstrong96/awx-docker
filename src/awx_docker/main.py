@@ -246,52 +246,19 @@ class AwxDocker:
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Resolve once, check upstream, build, verify, and return evidence."""
-        resolved_sha = resolved_revision or await self._resolve_upstream_revision(
-            source, upstream_repository, upstream_ref
-        )
-        source = await self._write_upstream_ref(
-            source,
-            upstream_repository,
-            upstream_ref,
-            resolved_sha,
-        )
-        source = self._with_upstream_health_evidence(
+        source, resolved_sha, _ = await self._verified_image(
             source,
             upstream_repository,
             upstream_ref,
             provider,
             signal_file,
-            resolved_sha,
-            "scheduled-build",
-            github_token,
-        )
-        source = await self._write_metadata(
-            source,
-            image_name,
-            image_tag,
-            upstream_repository,
-            upstream_ref,
-            resolved_sha,
-            platform,
-        )
-        image = self._build_image_from_source(
-            source,
-            upstream_repository,
-            upstream_ref,
-            resolved_sha,
+            resolved_revision,
             image_name,
             image_tag,
             platform,
             receptor_image,
             ssh_auth_sock,
-        )
-        image_ref = f"{image_name}:{image_tag}"
-        verified = image.with_exec(
-            ["/usr/local/libexec/awx-docker/verify-runtime-contract", image_ref]
-        )
-        source = source.with_directory(
-            "build/evidence",
-            verified.directory("/tmp/awx-docker-evidence"),
+            github_token,
         )
         source = await self._write_image_pipeline(
             source,
@@ -301,6 +268,92 @@ class AwxDocker:
             image_name,
             image_tag,
             platform,
+        )
+        return source.directory("build/evidence")
+
+    @function
+    async def image_export(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
+        image_ref: str = f"{DEFAULT_IMAGE_NAME}:{DEFAULT_IMAGE_TAG}",
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.File:
+        """Build and verify an image, then return it as an OCI tarball."""
+        image_name, image_tag = self._split_image_ref(image_ref)
+        _, _, verified = await self._verified_image(
+            source,
+            upstream_repository,
+            upstream_ref,
+            provider,
+            signal_file,
+            resolved_revision,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+            github_token,
+        )
+        return verified.as_tarball()
+
+    @function
+    async def image_publish(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
+        image_ref: str = f"{DEFAULT_IMAGE_NAME}:{DEFAULT_IMAGE_TAG}",
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        publication_gate_override: bool = False,
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Build, verify, gate, publish, and return published-image evidence."""
+        image_name, image_tag = self._split_image_ref(image_ref)
+        source, resolved_sha, verified = await self._verified_image(
+            source,
+            upstream_repository,
+            upstream_ref,
+            provider,
+            signal_file,
+            resolved_revision,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+            github_token,
+        )
+        if not publication_gate_override:
+            source = self._with_publication_gate_evidence(
+                source,
+                upstream_repository,
+                upstream_ref,
+                provider,
+                signal_file,
+                resolved_sha,
+                github_token,
+            )
+        published_ref = await verified.publish(image_ref)
+        source = await self._write_published_image(
+            source,
+            image_ref,
+            published_ref,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
         )
         return source.directory("build/evidence")
 
@@ -504,6 +557,70 @@ class AwxDocker:
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
 
+    async def _verified_image(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+        provider: str,
+        signal_file: str,
+        resolved_revision: str,
+        image_name: str,
+        image_tag: str,
+        platform: str,
+        receptor_image: str,
+        ssh_auth_sock: str,
+        github_token: dagger.Secret | None,
+    ) -> tuple[dagger.Directory, str, dagger.Container]:
+        resolved_sha = resolved_revision or await self._resolve_upstream_revision(
+            source, upstream_repository, upstream_ref
+        )
+        source = await self._write_upstream_ref(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+        )
+        source = self._with_upstream_health_evidence(
+            source,
+            upstream_repository,
+            upstream_ref,
+            provider,
+            signal_file,
+            resolved_sha,
+            "scheduled-build",
+            github_token,
+        )
+        source = await self._write_metadata(
+            source,
+            image_name,
+            image_tag,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            platform,
+        )
+        image = self._build_image_from_source(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+        )
+        image_ref = f"{image_name}:{image_tag}"
+        verified = image.with_exec(
+            ["/usr/local/libexec/awx-docker/verify-runtime-contract", image_ref]
+        )
+        source = source.with_directory(
+            "build/evidence",
+            verified.directory("/tmp/awx-docker-evidence"),
+        )
+        return source, resolved_sha, verified
+
     async def _write_upstream_ref(
         self,
         source: dagger.Directory,
@@ -562,6 +679,38 @@ class AwxDocker:
         ctr = ctr.with_exec(args)
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
 
+    def _with_publication_gate_evidence(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+        provider: str,
+        signal_file: str,
+        resolved_revision: str,
+        github_token: dagger.Secret | None,
+    ) -> dagger.Directory:
+        args = [
+            "uv",
+            "run",
+            "awx-docker",
+            "release-check",
+            "--upstream-repository",
+            upstream_repository,
+            "--upstream-ref",
+            upstream_ref,
+            "--provider",
+            provider,
+            "--resolved-revision",
+            resolved_revision,
+        ]
+        if signal_file:
+            args.extend(["--signal-file", signal_file])
+        ctr = self._python(source)
+        if github_token is not None:
+            ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
+        ctr = ctr.with_exec(args)
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
     async def _write_image_pipeline(
         self,
         source: dagger.Directory,
@@ -590,6 +739,35 @@ class AwxDocker:
                 image_tag,
                 "--platform",
                 platform,
+            ]
+        )
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
+    async def _write_published_image(
+        self,
+        source: dagger.Directory,
+        image_ref: str,
+        published_ref: str,
+        upstream_repository: str,
+        upstream_ref: str,
+        resolved_revision: str,
+    ) -> dagger.Directory:
+        ctr = self._python(source).with_exec(
+            [
+                "uv",
+                "run",
+                "awx-docker",
+                "write-published-image",
+                "--image-ref",
+                image_ref,
+                "--published-ref",
+                published_ref,
+                "--upstream-repository",
+                upstream_repository,
+                "--upstream-ref",
+                upstream_ref,
+                "--resolved-revision",
+                resolved_revision,
             ]
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
@@ -640,3 +818,10 @@ class AwxDocker:
             )
             .stdout()
         ).strip()
+
+    def _split_image_ref(self, image_ref: str) -> tuple[str, str]:
+        last_segment = image_ref.rsplit("/", 1)[-1]
+        if ":" not in last_segment:
+            return image_ref, DEFAULT_IMAGE_TAG
+        image_name, image_tag = image_ref.rsplit(":", 1)
+        return image_name, image_tag

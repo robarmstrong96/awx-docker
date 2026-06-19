@@ -16,6 +16,7 @@ We utilize Dagger for building and testing the image. Install Dagger from https:
 dagger call check --source=.
 dagger call upstream-health --source=. --upstream-ref=devel --provider=auto
 dagger call image-pipeline --source=. --upstream-ref=devel --provider=auto --image-name=awx-devel --image-tag=devel export --path=build/evidence
+dagger call image-export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
 dagger call publication-gate --source=. --upstream-ref=devel
 ```
 

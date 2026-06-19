@@ -13,7 +13,11 @@ from awx_docker.config import (
 from awx_docker.evidence import write_json, write_markdown
 from awx_docker.git_refs import resolve_ref
 from awx_docker.image.metadata import write_build_metadata
-from awx_docker.image.pipeline import write_image_pipeline, write_upstream_ref
+from awx_docker.image.pipeline import (
+    write_image_pipeline,
+    write_published_image,
+    write_upstream_ref,
+)
 from awx_docker.public_hygiene import scan_public_hygiene
 from awx_docker.upstream import write_upstream_health
 
@@ -70,6 +74,19 @@ def cmd_write_image_pipeline(args: argparse.Namespace) -> int:
         args.platform,
     )
     print(f"image-pipeline: pass ({args.image_name}:{args.image_tag})")
+    return 0
+
+
+def cmd_write_published_image(args: argparse.Namespace) -> int:
+    write_published_image(
+        evidence_dir(args.evidence_dir),
+        args.image_ref,
+        args.published_ref,
+        args.upstream_repository,
+        args.upstream_ref,
+        args.resolved_revision,
+    )
+    print(f"published-image: ok ({args.published_ref})")
     return 0
 
 
@@ -215,6 +232,21 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline.add_argument("--platform", default=os.environ.get("PLATFORM", DEFAULT_PLATFORM))
     pipeline.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     pipeline.set_defaults(func=cmd_write_image_pipeline)
+
+    published = sub.add_parser("write-published-image")
+    published.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    published.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    published.add_argument("--resolved-revision", required=True)
+    published.add_argument("--image-ref", required=True)
+    published.add_argument("--published-ref", required=True)
+    published.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    published.set_defaults(func=cmd_write_published_image)
 
     upstream = sub.add_parser("upstream-health")
     upstream.add_argument(

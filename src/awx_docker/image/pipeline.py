@@ -88,3 +88,45 @@ def write_image_pipeline(
         },
     )
     return data
+
+
+def write_published_image(
+    evidence_dir: Path,
+    image_ref: str,
+    published_ref: str,
+    repository: str,
+    requested_ref: str,
+    resolved_revision: str,
+) -> dict:
+    data = {
+        "schema_version": "awx-docker.published-image/v1",
+        "image": {"requested_ref": image_ref, "published_ref": published_ref},
+        "upstream": {
+            "repository": repository,
+            "requested_ref": requested_ref,
+            "resolved_revision": resolved_revision,
+        },
+    }
+    write_json(evidence_dir / "published-image.json", data)
+    write_markdown(
+        evidence_dir / "published-image.md",
+        "Published Image",
+        {
+            "requested_ref": f"`{image_ref}`",
+            "published_ref": f"`{published_ref}`",
+            "repository": f"`{repository}`",
+            "upstream_ref": f"`{requested_ref}`",
+            "resolved_revision": f"`{resolved_revision}`",
+        },
+    )
+    write_env(
+        evidence_dir / "published-image.env",
+        {
+            "IMAGE_REF": image_ref,
+            "PUBLISHED_IMAGE_REF": published_ref,
+            "UPSTREAM_REPOSITORY": repository,
+            "UPSTREAM_REQUESTED_REF": requested_ref,
+            "UPSTREAM_RESOLVED_REVISION": resolved_revision,
+        },
+    )
+    return data
