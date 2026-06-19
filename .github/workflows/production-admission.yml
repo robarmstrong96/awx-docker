@@ -32,6 +32,7 @@ jobs:
             export --path=build/evidence
 
       - name: Upload evidence reports
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: production-admission-evidence
@@ -61,6 +62,7 @@ jobs:
             export --path=build/evidence
 
       - name: Upload evidence reports
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: production-publication-gate-evidence

@@ -79,7 +79,7 @@ def test_evidence_workflows_upload_artifacts() -> None:
                 step for step in job["steps"] if step.get("uses") == "actions/upload-artifact@v4"
             ]
             assert upload_steps
-            assert all("continue-on-error" not in step for step in upload_steps)
+            assert all(step.get("continue-on-error") is True for step in upload_steps)
 
     public_readiness = workflow("project-checks.yml")["jobs"]["public-readiness"]
     upload_steps = [
@@ -88,7 +88,7 @@ def test_evidence_workflows_upload_artifacts() -> None:
         if step.get("uses") == "actions/upload-artifact@v4"
     ]
     assert upload_steps
-    assert all("continue-on-error" not in step for step in upload_steps)
+    assert all(step.get("continue-on-error") is True for step in upload_steps)
 
 
 def test_production_publication_gate_uses_lock() -> None:

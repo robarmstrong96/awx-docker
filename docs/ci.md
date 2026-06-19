@@ -21,5 +21,6 @@ Production promotion is lock-file based:
 - `production-admission` checks the lock, promotion evidence, public readiness, and publication gate
 - `production-publish` builds, verifies, gates, and publishes the pinned revision from the lock
 
-Evidence uploads are required. If an evidence artifact cannot be uploaded, the
-workflow should fail instead of silently passing.
+Evidence uploads are attempted for review, but upload failures are non-blocking
+so artifact storage quota cannot block image publishing or production
+promotion.
