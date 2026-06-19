@@ -197,6 +197,17 @@ class AwxDocker:
             .from_("ghcr.io/astral-sh/uv:python3.12-bookworm-slim")
             .with_directory("/src", source)
             .with_workdir("/src")
+            .with_exec(["apt-get", "update"])
+            .with_exec(
+                [
+                    "apt-get",
+                    "install",
+                    "-y",
+                    "--no-install-recommends",
+                    "ca-certificates",
+                    "git",
+                ]
+            )
             .with_exec(["uv", "sync", "--all-groups"])
         )
 

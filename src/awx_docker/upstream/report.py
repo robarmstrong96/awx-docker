@@ -38,8 +38,24 @@ def write_upstream_health(
     mode: str,
     github_token: str | None = None,
 ) -> UpstreamHealthReport:
-    resolved_sha = resolve_ref(repo, requested_ref)
     policy = load_policy(policy_path)
+    try:
+        resolved_sha = resolve_ref(repo, requested_ref)
+    except Exception as exc:
+        resolved_sha = "unknown"
+        combined = {"state": "none", "statuses": []}
+        checks = {"check_runs": []}
+        report = build_report(repo, requested_ref, resolved_sha, combined, checks, policy, mode)
+        report = UpstreamHealthReport(
+            schema_version=report.schema_version,
+            subject=report.subject,
+            signals=report.signals,
+            decision=decide_unknown(f"Could not resolve upstream ref: {exc}", policy, mode),
+            waiver=None,
+        )
+        _write_report(evidence_dir, report, repo, requested_ref, resolved_sha)
+        return report
+
     try:
         combined, checks = fetch_signals(repo, resolved_sha, github_token)
         write_raw(evidence_dir / "upstream-raw", combined, checks)
@@ -61,6 +77,17 @@ def write_upstream_health(
     else:
         report = build_report(repo, requested_ref, resolved_sha, combined, checks, policy, mode)
 
+    _write_report(evidence_dir, report, repo, requested_ref, resolved_sha)
+    return report
+
+
+def _write_report(
+    evidence_dir: Path,
+    report: UpstreamHealthReport,
+    repo: str,
+    requested_ref: str,
+    resolved_sha: str,
+) -> None:
     data = report.to_dict()
     write_json(evidence_dir / "upstream-health.json", data)
     write_markdown(
@@ -87,4 +114,3 @@ def write_upstream_health(
             "UPSTREAM_HEALTH_REASON": report.decision.reason,
         },
     )
-    return report
