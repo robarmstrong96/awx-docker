@@ -31,7 +31,8 @@ def test_make_upstream_health_is_dagger_alias() -> None:
 
 def test_make_image_targets_are_dagger_aliases() -> None:
     assert dry_run("build") == (
-        'dagger call image-build --source=. --awx-ref="${AWX_REF:-devel}" '
+        'dagger call image-pipeline --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
+        '--provider="${UPSTREAM_PROVIDER:-auto}" '
         '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
     )
     assert dry_run("verify-image") == (

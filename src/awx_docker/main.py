@@ -135,15 +135,16 @@ class AwxDocker:
         source: dagger.Directory,
         awx_repo: str = DEFAULT_AWX_REPO,
         awx_ref: str = DEFAULT_AWX_REF,
+        resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
         platform: str = DEFAULT_PLATFORM,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
         ssh_auth_sock: str = "",
     ) -> dagger.Container:
-        """Build the AWX proof-of-concept image."""
+        """Build the AWX proof-of-concept image as a lower-level operation."""
         source, resolved_sha = await self._prepare_image_source(
-            source, image_name, image_tag, awx_repo, awx_ref, platform
+            source, image_name, image_tag, awx_repo, awx_ref, platform, resolved_revision
         )
         return self._build_image_from_source(
             source,
@@ -197,15 +198,16 @@ class AwxDocker:
         source: dagger.Directory,
         awx_repo: str = DEFAULT_AWX_REPO,
         awx_ref: str = DEFAULT_AWX_REF,
+        resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
         platform: str = DEFAULT_PLATFORM,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
         ssh_auth_sock: str = "",
     ) -> dagger.Directory:
-        """Verify image contents and return evidence files."""
+        """Build and verify the image as a lower-level operation."""
         source, resolved_sha = await self._prepare_image_source(
-            source, image_name, image_tag, awx_repo, awx_ref, platform
+            source, image_name, image_tag, awx_repo, awx_ref, platform, resolved_revision
         )
         image = self._build_image_from_source(
             source,
@@ -226,6 +228,81 @@ class AwxDocker:
             "build/evidence",
             verified.directory("/tmp/awx-docker-evidence"),
         ).directory("build/evidence")
+
+    @function
+    async def image_pipeline(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        provider: str = "auto",
+        signal_file: str = "",
+        resolved_revision: str = "",
+        image_name: str = DEFAULT_IMAGE_NAME,
+        image_tag: str = DEFAULT_IMAGE_TAG,
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Resolve once, check upstream, build, verify, and return evidence."""
+        resolved_sha = resolved_revision or await self._resolve_upstream_revision(
+            source, upstream_repository, upstream_ref
+        )
+        source = await self._write_upstream_ref(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+        )
+        source = self._with_upstream_health_evidence(
+            source,
+            upstream_repository,
+            upstream_ref,
+            provider,
+            signal_file,
+            resolved_sha,
+            "scheduled-build",
+            github_token,
+        )
+        source = await self._write_metadata(
+            source,
+            image_name,
+            image_tag,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            platform,
+        )
+        image = self._build_image_from_source(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+        )
+        image_ref = f"{image_name}:{image_tag}"
+        verified = image.with_exec(
+            ["/usr/local/libexec/awx-docker/verify-runtime-contract", image_ref]
+        )
+        source = source.with_directory(
+            "build/evidence",
+            verified.directory("/tmp/awx-docker-evidence"),
+        )
+        source = await self._write_image_pipeline(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            image_name,
+            image_tag,
+            platform,
+        )
+        return source.directory("build/evidence")
 
     @function
     async def release_check(
@@ -427,6 +504,96 @@ class AwxDocker:
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
 
+    async def _write_upstream_ref(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+        resolved_revision: str,
+    ) -> dagger.Directory:
+        ctr = self._python(source).with_exec(
+            [
+                "uv",
+                "run",
+                "awx-docker",
+                "write-upstream-ref",
+                "--upstream-repository",
+                upstream_repository,
+                "--upstream-ref",
+                upstream_ref,
+                "--resolved-revision",
+                resolved_revision,
+            ]
+        )
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
+    def _with_upstream_health_evidence(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+        provider: str,
+        signal_file: str,
+        resolved_revision: str,
+        mode: str,
+        github_token: dagger.Secret | None,
+    ) -> dagger.Directory:
+        args = [
+            "uv",
+            "run",
+            "awx-docker",
+            "upstream-health",
+            "--upstream-repository",
+            upstream_repository,
+            "--upstream-ref",
+            upstream_ref,
+            "--provider",
+            provider,
+            "--resolved-revision",
+            resolved_revision,
+            "--mode",
+            mode,
+        ]
+        if signal_file:
+            args.extend(["--signal-file", signal_file])
+        ctr = self._python(source)
+        if github_token is not None:
+            ctr = ctr.with_secret_variable("GITHUB_TOKEN", github_token)
+        ctr = ctr.with_exec(args)
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
+    async def _write_image_pipeline(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+        resolved_revision: str,
+        image_name: str,
+        image_tag: str,
+        platform: str,
+    ) -> dagger.Directory:
+        ctr = self._python(source).with_exec(
+            [
+                "uv",
+                "run",
+                "awx-docker",
+                "write-image-pipeline",
+                "--upstream-repository",
+                upstream_repository,
+                "--upstream-ref",
+                upstream_ref,
+                "--resolved-revision",
+                resolved_revision,
+                "--image-name",
+                image_name,
+                "--image-tag",
+                image_tag,
+                "--platform",
+                platform,
+            ]
+        )
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
     async def _prepare_image_source(
         self,
         source: dagger.Directory,
@@ -435,23 +602,11 @@ class AwxDocker:
         awx_repo: str,
         requested_ref: str,
         platform: str,
+        resolved_ref: str = "",
     ) -> tuple[dagger.Directory, str]:
-        resolved_ref = (
-            await self._python(source)
-            .with_exec(
-                [
-                    "uv",
-                    "run",
-                    "awx-docker",
-                    "resolve-ref",
-                    "--awx-repo",
-                    awx_repo,
-                    "--awx-ref",
-                    requested_ref,
-                ]
-            )
-            .stdout()
-        ).strip()
+        resolved_ref = resolved_ref or await self._resolve_upstream_revision(
+            source, awx_repo, requested_ref
+        )
         source = await self._write_metadata(
             source,
             image_name,
@@ -462,3 +617,26 @@ class AwxDocker:
             platform,
         )
         return source, resolved_ref
+
+    async def _resolve_upstream_revision(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str,
+        upstream_ref: str,
+    ) -> str:
+        return (
+            await self._python(source)
+            .with_exec(
+                [
+                    "uv",
+                    "run",
+                    "awx-docker",
+                    "resolve-ref",
+                    "--awx-repo",
+                    upstream_repository,
+                    "--awx-ref",
+                    upstream_ref,
+                ]
+            )
+            .stdout()
+        ).strip()

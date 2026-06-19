@@ -9,6 +9,7 @@ from jsonschema import ValidationError, validate
 
 from awx_docker.cli import cmd_release_check
 from awx_docker.image.metadata import write_build_metadata
+from awx_docker.image.pipeline import write_image_pipeline, write_upstream_ref
 from awx_docker.public_hygiene.scan import scan_public_hygiene
 from awx_docker.upstream.policy import load_policy
 from awx_docker.upstream.report import build_report
@@ -53,6 +54,25 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         "scheduled-build",
     )
     validate(upstream.to_dict(), schema("upstream-health-report"))
+
+    upstream_ref = write_upstream_ref(
+        evidence,
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "d" * 40,
+    )
+    validate(upstream_ref, schema("upstream-ref"))
+
+    image_pipeline = write_image_pipeline(
+        evidence,
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "e" * 40,
+        "awx-devel",
+        "devel",
+        "linux/amd64",
+    )
+    validate(image_pipeline, schema("image-pipeline"))
 
     image_verification = {
         "schema_version": "awx-docker.image-verification/v1",

@@ -22,7 +22,7 @@ upstream-health:
 	@dagger call upstream-health --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}"
 
 build:
-	@dagger call image-build --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
+	@dagger call image-pipeline --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
 
 verify-image:
 	@dagger call image-verify --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"

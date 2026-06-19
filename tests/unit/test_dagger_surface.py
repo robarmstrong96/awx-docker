@@ -34,6 +34,7 @@ def test_dagger_surface_includes_public_readiness_aliases() -> None:
 
     assert "public_readiness" in functions
     assert "publication_gate" in functions
+    assert "image_pipeline" in functions
 
 
 def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
@@ -43,3 +44,16 @@ def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
     assert "_prepare_image_source" in source
     assert "_with_public_hygiene_evidence" in source
     assert 'source.directory("build/evidence")' not in source
+
+
+def test_image_pipeline_resolves_once_and_reuses_revision() -> None:
+    pipeline = public_dagger_functions()["image_pipeline"]
+    source = source_for(pipeline)
+
+    assert source.count("_resolve_upstream_revision") == 1
+    assert "_write_upstream_ref" in source
+    assert "_with_upstream_health_evidence" in source
+    assert "_write_metadata" in source
+    assert "_build_image_from_source" in source
+    assert "_write_image_pipeline" in source
+    assert "resolved_sha" in source

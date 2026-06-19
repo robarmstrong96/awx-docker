@@ -14,9 +14,8 @@ We utilize Dagger for building and testing the image. Install Dagger from https:
 
 ```bash
 dagger call check --source=.
-dagger call upstream-health --source=. --upstream-ref=devel
-dagger call image-build --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
-dagger call image-verify --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
+dagger call upstream-health --source=. --upstream-ref=devel --provider=auto
+dagger call image-pipeline --source=. --upstream-ref=devel --provider=auto --image-name=awx-devel --image-tag=devel export --path=build/evidence
 dagger call publication-gate --source=. --upstream-ref=devel
 ```
 
@@ -28,7 +27,6 @@ These commands are provided for convenience.
 make check
 make strict-check
 make build
-make verify-image
 make upstream-health
 make public-readiness
 make publication-gate

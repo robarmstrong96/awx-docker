@@ -13,6 +13,7 @@ from awx_docker.config import (
 from awx_docker.evidence import write_json, write_markdown
 from awx_docker.git_refs import resolve_ref
 from awx_docker.image.metadata import write_build_metadata
+from awx_docker.image.pipeline import write_image_pipeline, write_upstream_ref
 from awx_docker.public_hygiene import scan_public_hygiene
 from awx_docker.upstream import write_upstream_health
 
@@ -43,6 +44,32 @@ def cmd_write_metadata(args: argparse.Namespace) -> int:
         args.platform,
     )
     print(f"build-metadata: ok ({resolved})")
+    return 0
+
+
+def cmd_write_upstream_ref(args: argparse.Namespace) -> int:
+    resolved = args.resolved_revision or resolve_ref(args.upstream_repository, args.upstream_ref)
+    write_upstream_ref(
+        evidence_dir(args.evidence_dir),
+        args.upstream_repository,
+        args.upstream_ref,
+        resolved,
+    )
+    print(f"upstream-ref: ok ({resolved})")
+    return 0
+
+
+def cmd_write_image_pipeline(args: argparse.Namespace) -> int:
+    write_image_pipeline(
+        evidence_dir(args.evidence_dir),
+        args.upstream_repository,
+        args.upstream_ref,
+        args.resolved_revision,
+        args.image_name,
+        args.image_tag,
+        args.platform,
+    )
+    print(f"image-pipeline: pass ({args.image_name}:{args.image_tag})")
     return 0
 
 
@@ -153,6 +180,41 @@ def build_parser() -> argparse.ArgumentParser:
     metadata.add_argument("--platform", default=os.environ.get("PLATFORM", DEFAULT_PLATFORM))
     metadata.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     metadata.set_defaults(func=cmd_write_metadata)
+
+    upstream_ref = sub.add_parser("write-upstream-ref")
+    upstream_ref.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    upstream_ref.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    upstream_ref.add_argument(
+        "--resolved-revision",
+        default=os.environ.get("UPSTREAM_RESOLVED_REVISION"),
+    )
+    upstream_ref.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    upstream_ref.set_defaults(func=cmd_write_upstream_ref)
+
+    pipeline = sub.add_parser("write-image-pipeline")
+    pipeline.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    pipeline.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    pipeline.add_argument(
+        "--resolved-revision",
+        required=True,
+    )
+    pipeline.add_argument("--image-name", default=os.environ.get("IMAGE_NAME", DEFAULT_IMAGE_NAME))
+    pipeline.add_argument("--image-tag", default=os.environ.get("IMAGE_TAG", DEFAULT_IMAGE_TAG))
+    pipeline.add_argument("--platform", default=os.environ.get("PLATFORM", DEFAULT_PLATFORM))
+    pipeline.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    pipeline.set_defaults(func=cmd_write_image_pipeline)
 
     upstream = sub.add_parser("upstream-health")
     upstream.add_argument(

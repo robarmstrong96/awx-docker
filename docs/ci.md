@@ -3,7 +3,7 @@
 CI uses Dagger as the command interface.
 
 - `check.yml` runs the fast default `dagger call check --source=.`
-- `image-build.yml` checks upstream health, builds the image, and verifies it;
+- `image-build.yml` runs the transactional image pipeline;
   manual runs can choose the Dagger image name and tag
 - The on-demand publication workflow runs the publication gate
 
