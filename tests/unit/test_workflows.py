@@ -30,6 +30,14 @@ def test_workflow_and_job_names_are_presentable() -> None:
     admission_jobs = workflow("production-admission.yml")["jobs"]
     assert admission_jobs["validate-production-lock"]["name"] == "Validate production lock"
     assert admission_jobs["publication-gate"]["name"] == "Publication gate"
+    assert (
+        workflow("image-pipeline.yml")["jobs"]["build-and-verify-candidate"]["name"]
+        == "Publish development image"
+    )
+    assert (
+        workflow("production-pipeline.yml")["jobs"]["build-locked-image"]["name"]
+        == "Publish locked image"
+    )
 
 
 def test_dagger_workflows_use_pinned_engine_version() -> None:
@@ -49,6 +57,11 @@ def test_dagger_github_token_secret_is_exposed_to_steps() -> None:
                 dagger_args = step.get("with", {}).get("args", "")
                 if "--github-token=env://GITHUB_TOKEN" in dagger_args:
                     assert step.get("env", {}).get("GITHUB_TOKEN") == "${{ github.token }}"
+
+
+def test_publish_workflows_have_package_write_permission() -> None:
+    for name in ("image-pipeline.yml", "production-pipeline.yml"):
+        assert workflow(name)["permissions"]["packages"] == "write"
 
 
 def test_evidence_workflows_upload_artifacts() -> None:
@@ -90,3 +103,33 @@ def test_production_publication_gate_uses_lock() -> None:
     assert "--from-lock=true" in args
     assert "--purpose=production-admission" in args
     assert "--upstream-ref=devel" not in args
+
+
+def test_image_workflow_publishes_development_tag() -> None:
+    data = workflow("image-pipeline.yml")
+    assert data["on"]["push"]["branches"] == ["development"]
+    assert data["on"]["workflow_dispatch"]["inputs"]["image_tag"]["default"] == "development"
+
+    dagger_step = next(
+        step
+        for step in data["jobs"]["build-and-verify-candidate"]["steps"]
+        if step.get("uses") == "dagger/dagger-for-github@v8.3.0"
+    )
+    args = dagger_step["with"]["args"]
+
+    assert "image-publish" in args
+    assert "--image-ref=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" in args
+    assert "--registry-token=env://GITHUB_TOKEN" in args
+
+
+def test_production_workflow_publishes_locked_tags() -> None:
+    data = workflow("production-pipeline.yml")
+    dagger_step = next(
+        step
+        for step in data["jobs"]["build-locked-image"]["steps"]
+        if step.get("uses") == "dagger/dagger-for-github@v8.3.0"
+    )
+    args = dagger_step["with"]["args"]
+
+    assert "production-publish" in args
+    assert "--registry-token=env://GITHUB_TOKEN" in args

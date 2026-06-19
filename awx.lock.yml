@@ -8,7 +8,7 @@ upstream:
 
 image:
   name: ghcr.io/robarmstrong96/awx-devel
-  tag: prod-2026-06-19-6fd612a
+  tag: production
 
 promotion:
   source_branch: development

@@ -16,12 +16,13 @@ We utilize Dagger for building and testing the image. Install Dagger from https:
 dagger call check --source=.
 dagger call upstream-health --source=. --upstream-repository=https://github.com/ansible/awx.git --upstream-ref=devel --provider=auto
 dagger call image-pipeline --source=. --upstream-ref=devel export --path=build/evidence
+dagger call image-publish --source=. --upstream-ref=devel --image-ref=ghcr.io/example/awx-devel:development export --path=build/evidence
 dagger call public-readiness --source=. export --path=build/evidence
 dagger call publication-gate --source=. export --path=build/evidence
-dagger call image-export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+dagger call image-export --source=. --upstream-ref=devel --image-ref=awx-devel:development export --path=build/out/awx-devel.tar
 dagger call promote-candidate --source=. --upstream-ref=devel
 dagger call production-admission --source=. export --path=build/evidence
-dagger call production-pipeline --source=. export --path=build/evidence
+dagger call production-publish --source=. export --path=build/evidence
 ```
 
 ## Optional Make aliases
@@ -36,6 +37,7 @@ make upstream-health
 make public-readiness
 make publication-gate
 make production-admission
+make production-publish
 ```
 
 ## Defaults
@@ -45,7 +47,8 @@ Example defaults for the build:
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
 - Upstream AWX ref: `devel`
 - Upstream health provider: `auto`
-- Image tag: `awx-devel:devel`
+- Development image tag: `awx-devel:development`
+- Production image tags: `awx-devel:production`, `awx-devel:latest`
 - Dockerfile: `docker/awx/Dockerfile`
 
 The build clones upstream AWX during the Docker image build. This repository

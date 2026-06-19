@@ -45,6 +45,7 @@ def test_dagger_surface_includes_public_readiness_aliases() -> None:
     assert "promote_candidate" in functions
     assert "production_admission" in functions
     assert "production_pipeline" in functions
+    assert "production_publish" in functions
 
 
 def test_image_pipeline_resolves_once_and_reuses_revision() -> None:
@@ -79,3 +80,12 @@ def test_publication_gate_accepts_purpose_and_lock_arguments() -> None:
 
     assert "purpose" in arg_names
     assert "from_lock" in arg_names
+
+
+def test_publish_functions_accept_registry_auth_arguments() -> None:
+    functions = public_dagger_functions()
+
+    for name in ("image_publish", "production_publish"):
+        arg_names = [arg.arg for arg in functions[name].args.args]
+        assert "registry_username" in arg_names
+        assert "registry_token" in arg_names

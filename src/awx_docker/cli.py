@@ -20,6 +20,7 @@ from awx_docker.image.metadata import write_build_metadata
 from awx_docker.image.pipeline import (
     write_image_pipeline,
     write_published_image,
+    write_published_images,
     write_upstream_ref,
 )
 from awx_docker.production import (
@@ -110,6 +111,22 @@ def cmd_write_published_image(args: argparse.Namespace) -> int:
         args.resolved_revision,
     )
     print(f"published-image: ok ({args.published_ref})")
+    return 0
+
+
+def cmd_write_published_images(args: argparse.Namespace) -> int:
+    images = [
+        {"requested_ref": requested, "published_ref": published}
+        for requested, published in zip(args.image_ref, args.published_ref, strict=True)
+    ]
+    write_published_images(
+        evidence_dir(args.evidence_dir),
+        images,
+        args.upstream_repository,
+        args.upstream_ref,
+        args.resolved_revision,
+    )
+    print(f"published-images: ok ({', '.join(args.published_ref)})")
     return 0
 
 
@@ -531,6 +548,21 @@ def build_parser() -> argparse.ArgumentParser:
     published.add_argument("--published-ref", required=True)
     published.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     published.set_defaults(func=cmd_write_published_image)
+
+    published_many = sub.add_parser("write-published-images")
+    published_many.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    published_many.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    published_many.add_argument("--resolved-revision", required=True)
+    published_many.add_argument("--image-ref", action="append", required=True)
+    published_many.add_argument("--published-ref", action="append", required=True)
+    published_many.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
+    published_many.set_defaults(func=cmd_write_published_images)
 
     upstream = sub.add_parser("upstream-health")
     upstream.add_argument(

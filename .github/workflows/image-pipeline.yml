@@ -1,6 +1,9 @@
 name: Image Pipeline
 
 "on":
+  push:
+    branches:
+      - development
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
@@ -12,7 +15,7 @@ name: Image Pipeline
       image_tag:
         description: Image tag
         required: true
-        default: devel
+        default: development
       image_name:
         description: Image name passed to Dagger
         required: true
@@ -22,15 +25,16 @@ permissions:
   contents: read
   checks: read
   statuses: read
+  packages: write
 
 jobs:
   build-and-verify-candidate:
-    name: Build and verify candidate
+    name: Publish development image
     runs-on: ubuntu-latest
     env:
       UPSTREAM_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.upstream_ref || 'devel' }}
       IMAGE_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.image_name || format('ghcr.io/{0}/awx-devel', github.repository_owner) }}
-      IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'devel' }}
+      IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'development' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,12 +45,13 @@ jobs:
           version: "v0.21.4"
           verb: call
           args: >-
-            image-pipeline
+            image-publish
             --source=.
             --upstream-ref=${{ env.UPSTREAM_REF }}
             --provider=auto
-            --image-name=${{ env.IMAGE_NAME }}
-            --image-tag=${{ env.IMAGE_TAG }}
+            --image-ref=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            --registry-username=${{ github.actor }}
+            --registry-token=env://GITHUB_TOKEN
             --github-token=env://GITHUB_TOKEN
             export --path=build/evidence
 

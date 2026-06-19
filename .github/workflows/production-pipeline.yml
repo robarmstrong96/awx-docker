@@ -10,10 +10,11 @@ permissions:
   contents: read
   checks: read
   statuses: read
+  packages: write
 
 jobs:
   build-locked-image:
-    name: Build locked image
+    name: Publish locked image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +26,11 @@ jobs:
           version: "v0.21.4"
           verb: call
           args: >-
-            production-pipeline
+            production-publish
             --source=.
             --provider=auto
+            --registry-username=${{ github.actor }}
+            --registry-token=env://GITHUB_TOKEN
             --github-token=env://GITHUB_TOKEN
             export --path=build/evidence
 

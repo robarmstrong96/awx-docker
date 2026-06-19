@@ -1,4 +1,4 @@
-.PHONY: check strict-check format lint test upstream-health build public-readiness publication-gate promote-candidate production-admission production-pipeline help
+.PHONY: check strict-check format lint test upstream-health build public-readiness publication-gate promote-candidate production-admission production-pipeline production-publish help
 
 help:
 	@dagger functions
@@ -38,3 +38,6 @@ production-admission:
 
 production-pipeline:
 	@dagger call production-pipeline --source=. --provider="$${UPSTREAM_PROVIDER:-auto}"
+
+production-publish:
+	@dagger call production-publish --source=. --provider="$${UPSTREAM_PROVIDER:-auto}" --registry-username="$${REGISTRY_USERNAME:-}" --registry-token=env://REGISTRY_TOKEN

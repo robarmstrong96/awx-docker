@@ -5,6 +5,7 @@ from awx_docker.image.metadata import write_build_metadata
 from awx_docker.image.pipeline import (
     write_image_pipeline,
     write_published_image,
+    write_published_images,
     write_upstream_ref,
 )
 
@@ -82,3 +83,32 @@ def test_published_image_writes_digest_evidence(tmp_path: Path) -> None:
     assert written == data
     assert written["image"]["published_ref"].endswith("d" * 64)
     assert (evidence / "published-image.md").exists()
+
+
+def test_published_images_writes_multi_tag_evidence(tmp_path: Path) -> None:
+    evidence = tmp_path / "evidence"
+
+    data = write_published_images(
+        evidence,
+        [
+            {
+                "requested_ref": "ghcr.io/example/awx-devel:production",
+                "published_ref": "ghcr.io/example/awx-devel:production@sha256:" + "e" * 64,
+            },
+            {
+                "requested_ref": "ghcr.io/example/awx-devel:latest",
+                "published_ref": "ghcr.io/example/awx-devel:latest@sha256:" + "e" * 64,
+            },
+        ],
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "e" * 40,
+    )
+
+    written = json.loads((evidence / "published-images.json").read_text())
+    assert written == data
+    assert [image["requested_ref"].rsplit(":", 1)[-1] for image in written["images"]] == [
+        "production",
+        "latest",
+    ]
+    assert (evidence / "published-images.md").exists()

@@ -327,6 +327,8 @@ class AwxDocker:
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
         ssh_auth_sock: str = "",
         publication_gate_override: bool = False,
+        registry_username: str = "",
+        registry_token: dagger.Secret | None = None,
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Build, verify, gate, publish, and return published-image evidence."""
@@ -357,6 +359,12 @@ class AwxDocker:
                 False,
                 github_token,
             )
+        verified = self._with_registry_auth(
+            verified,
+            image_ref,
+            registry_username,
+            registry_token,
+        )
         published_ref = await verified.publish(image_ref)
         source = await self._write_published_image(
             source,
@@ -504,6 +512,72 @@ class AwxDocker:
             "production-promotion",
             False,
             github_token,
+        )
+        source = await self._write_production_pipeline(source)
+        return source.directory("build/evidence")
+
+    @function
+    async def production_publish(
+        self,
+        source: dagger.Directory,
+        provider: str = "auto",
+        signal_file: str = "",
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
+        registry_username: str = "",
+        registry_token: dagger.Secret | None = None,
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Build, verify, gate, publish production and latest tags, then return evidence."""
+        lock = await self._load_production_lock(source)
+        upstream = lock["upstream"]
+        image = lock["image"]
+        image_name = image["name"]
+        production_ref = f"{image_name}:production"
+        latest_ref = f"{image_name}:latest"
+        source, resolved_sha, verified = await self._verified_image(
+            source,
+            upstream["repository"],
+            upstream["requested_ref"],
+            provider,
+            signal_file,
+            upstream["resolved_revision"],
+            image_name,
+            "production",
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+            github_token,
+        )
+        source = self._with_publication_gate_evidence(
+            source,
+            upstream["repository"],
+            upstream["requested_ref"],
+            provider,
+            signal_file,
+            resolved_sha,
+            "production-promotion",
+            False,
+            github_token,
+        )
+        verified = self._with_registry_auth(
+            verified,
+            production_ref,
+            registry_username,
+            registry_token,
+        )
+        published_production_ref = await verified.publish(production_ref)
+        published_latest_ref = await verified.publish(latest_ref)
+        source = await self._write_published_images(
+            source,
+            [
+                (production_ref, published_production_ref),
+                (latest_ref, published_latest_ref),
+            ],
+            upstream["repository"],
+            upstream["requested_ref"],
+            resolved_sha,
         )
         source = await self._write_production_pipeline(source)
         return source.directory("build/evidence")
@@ -862,6 +936,31 @@ class AwxDocker:
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
 
+    async def _write_published_images(
+        self,
+        source: dagger.Directory,
+        images: list[tuple[str, str]],
+        upstream_repository: str,
+        upstream_ref: str,
+        resolved_revision: str,
+    ) -> dagger.Directory:
+        args = [
+            "uv",
+            "run",
+            "awx-docker",
+            "write-published-images",
+            "--upstream-repository",
+            upstream_repository,
+            "--upstream-ref",
+            upstream_ref,
+            "--resolved-revision",
+            resolved_revision,
+        ]
+        for requested_ref, published_ref in images:
+            args.extend(["--image-ref", requested_ref, "--published-ref", published_ref])
+        ctr = self._python(source).with_exec(args)
+        return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
     async def _write_production_pipeline(self, source: dagger.Directory) -> dagger.Directory:
         ctr = self._python(source).with_exec(
             ["uv", "run", "awx-docker", "write-production-pipeline"]
@@ -931,3 +1030,21 @@ class AwxDocker:
             return image_ref, DEFAULT_IMAGE_TAG
         image_name, image_tag = image_ref.rsplit(":", 1)
         return image_name, image_tag
+
+    def _with_registry_auth(
+        self,
+        image: dagger.Container,
+        image_ref: str,
+        registry_username: str,
+        registry_token: dagger.Secret | None,
+    ) -> dagger.Container:
+        if registry_token is None:
+            return image
+        first_segment = image_ref.split("/", 1)[0]
+        registry = (
+            first_segment
+            if "." in first_segment or ":" in first_segment or first_segment == "localhost"
+            else "docker.io"
+        )
+        username = registry_username or "oauth2accesstoken"
+        return image.with_registry_auth(registry, username, registry_token)

@@ -61,6 +61,10 @@ def test_make_production_targets_are_dagger_aliases() -> None:
     assert dry_run("production-pipeline") == (
         'dagger call production-pipeline --source=. --provider="${UPSTREAM_PROVIDER:-auto}"'
     )
+    assert dry_run("production-publish") == (
+        'dagger call production-publish --source=. --provider="${UPSTREAM_PROVIDER:-auto}" '
+        '--registry-username="${REGISTRY_USERNAME:-}" --registry-token=env://REGISTRY_TOKEN'
+    )
 
 
 def test_make_aliases_do_not_reference_deleted_wrappers() -> None:

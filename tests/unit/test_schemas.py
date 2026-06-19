@@ -12,6 +12,7 @@ from awx_docker.image.metadata import write_build_metadata
 from awx_docker.image.pipeline import (
     write_image_pipeline,
     write_published_image,
+    write_published_images,
     write_upstream_ref,
 )
 from awx_docker.production import (
@@ -103,6 +104,24 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         "f" * 40,
     )
     validate(published_image, schema("published-image"))
+
+    published_images = write_published_images(
+        evidence,
+        [
+            {
+                "requested_ref": "ghcr.io/example/awx-devel:production",
+                "published_ref": "ghcr.io/example/awx-devel:production@sha256:" + "f" * 64,
+            },
+            {
+                "requested_ref": "ghcr.io/example/awx-devel:latest",
+                "published_ref": "ghcr.io/example/awx-devel:latest@sha256:" + "f" * 64,
+            },
+        ],
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "f" * 40,
+    )
+    validate(published_images, schema("published-images"))
 
     promotion_candidate = write_promotion_candidate(evidence, lock)
     validate(promotion_candidate, schema("promotion-candidate"))

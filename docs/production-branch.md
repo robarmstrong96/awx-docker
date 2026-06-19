@@ -22,8 +22,6 @@ such as `devel`.
 The `production` branch is protected with:
 
 - pull requests required before merge
-- one approving review required
-- stale approvals dismissed after new pushes
 - conversation resolution required
 - required branches to be up to date
 - linear history required
@@ -41,5 +39,6 @@ Required checks:
 The production `Publication gate` check reads `awx.lock.yml`; it does not
 evaluate a floating upstream branch.
 
-`Production Pipeline / Build locked image` is intentionally not a required
-merge check yet. It remains available as the post-merge locked-image build.
+`Production Pipeline / Publish locked image` is intentionally not a required
+merge check. It runs after production updates and publishes the locked image as
+both `production` and `latest`.

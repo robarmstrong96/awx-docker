@@ -130,3 +130,42 @@ def write_published_image(
         },
     )
     return data
+
+
+def write_published_images(
+    evidence_dir: Path,
+    images: list[dict[str, str]],
+    repository: str,
+    requested_ref: str,
+    resolved_revision: str,
+) -> dict:
+    data = {
+        "schema_version": "awx-docker.published-images/v1",
+        "images": images,
+        "upstream": {
+            "repository": repository,
+            "requested_ref": requested_ref,
+            "resolved_revision": resolved_revision,
+        },
+    }
+    write_json(evidence_dir / "published-images.json", data)
+    write_markdown(
+        evidence_dir / "published-images.md",
+        "Published Images",
+        {
+            "images": ", ".join(image["published_ref"] for image in images),
+            "repository": f"`{repository}`",
+            "upstream_ref": f"`{requested_ref}`",
+            "resolved_revision": f"`{resolved_revision}`",
+        },
+    )
+    write_env(
+        evidence_dir / "published-images.env",
+        {
+            "PUBLISHED_IMAGE_REFS": ",".join(image["published_ref"] for image in images),
+            "UPSTREAM_REPOSITORY": repository,
+            "UPSTREAM_REQUESTED_REF": requested_ref,
+            "UPSTREAM_RESOLVED_REVISION": resolved_revision,
+        },
+    )
+    return data
