@@ -1,9 +1,10 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 
 from awx_docker.upstream.normalize import normalize_signals
 from awx_docker.upstream.policy import decide, load_policy
-from awx_docker.upstream.report import write_upstream_health
+from awx_docker.upstream.report import build_report, write_upstream_health
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/fixtures/github"
@@ -19,7 +20,13 @@ def load_fixture(name: str) -> tuple[dict, dict]:
 
 def decision_for(name: str, mode: str = "scheduled-build") -> str:
     combined, checks = load_fixture(name)
-    signals = normalize_signals(combined, checks)
+    decisions = POLICY["decisions"]
+    signals = normalize_signals(
+        combined,
+        checks,
+        fail_conclusions=set(decisions["fail_on_check_conclusions"]),
+        wait_statuses=set(decisions["wait_on_check_statuses"]),
+    )
     return decide(signals, POLICY, mode).state
 
 
@@ -34,6 +41,25 @@ def test_failing_check_fails() -> None:
 def test_pending_check_fails_scheduled_build_but_warns_local() -> None:
     assert decision_for("pending-check", "scheduled-build") == "fail"
     assert decision_for("pending-check", "local") == "warn"
+
+
+def test_check_run_classification_comes_from_policy() -> None:
+    combined, checks = load_fixture("failing-check")
+    relaxed_policy = deepcopy(POLICY)
+    relaxed_policy["decisions"]["fail_on_check_conclusions"] = []
+
+    report = build_report(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        combined,
+        checks,
+        relaxed_policy,
+        "scheduled-build",
+    )
+
+    assert report.signals.check_runs.failing == []
+    assert report.decision.state == "pass"
 
 
 def test_missing_signal_warns_scheduled_build_and_fails_publication() -> None:

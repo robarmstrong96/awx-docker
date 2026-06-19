@@ -20,7 +20,13 @@ def build_report(
     policy: dict,
     mode: str,
 ) -> UpstreamHealthReport:
-    signals = normalize_signals(combined, checks)
+    decisions = policy["decisions"]
+    signals = normalize_signals(
+        combined,
+        checks,
+        fail_conclusions=set(decisions["fail_on_check_conclusions"]),
+        wait_statuses=set(decisions["wait_on_check_statuses"]),
+    )
     return UpstreamHealthReport(
         schema_version=SCHEMA_VERSION,
         subject=UpstreamSubject(repo=repo, requested_ref=requested_ref, resolved_sha=resolved_sha),
