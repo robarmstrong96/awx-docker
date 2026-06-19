@@ -86,12 +86,25 @@ def cmd_release_check(args: argparse.Namespace) -> int:
     )
     failed = hygiene.status == "fail" or upstream.decision.blocking
     status = "fail" if failed else "pass"
+    public_hygiene_reason = (
+        "Public hygiene passed." if hygiene.status != "fail" else "Public hygiene failed."
+    )
+    upstream_health_reason = upstream.decision.reason
+    reason_parts = []
+    if hygiene.status == "fail":
+        reason_parts.append(public_hygiene_reason)
+    if upstream.decision.blocking:
+        reason_parts.append(upstream_health_reason)
+    reason = " ".join(reason_parts) if reason_parts else "Release checks passed."
     data = {
         "schema_version": "awx-docker.release-check/v1",
         "status": status,
+        "reason": reason,
         "checks": {
             "public_hygiene": hygiene.status,
+            "public_hygiene_reason": public_hygiene_reason,
             "upstream_health": upstream.decision.state,
+            "upstream_health_reason": upstream_health_reason,
         },
     }
     write_json(evidence / "release-check.json", data)
@@ -100,11 +113,14 @@ def cmd_release_check(args: argparse.Namespace) -> int:
         "Release Check",
         {
             "status": f"`{status}`",
+            "reason": reason,
             "public_hygiene": f"`{hygiene.status}`",
+            "public_hygiene_reason": public_hygiene_reason,
             "upstream_health": f"`{upstream.decision.state}`",
+            "upstream_health_reason": upstream_health_reason,
         },
     )
-    print(f"release-check: {status}")
+    print(f"release-check: {status} ({reason})")
     return 1 if failed else 0
 
 
