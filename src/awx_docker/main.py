@@ -6,6 +6,7 @@ from awx_docker.config import (
     DEFAULT_AWX_REPO,
     DEFAULT_IMAGE_NAME,
     DEFAULT_IMAGE_TAG,
+    DEFAULT_PLATFORM,
     DEFAULT_RECEPTOR_IMAGE,
 )
 
@@ -92,36 +93,38 @@ class AwxDocker:
         awx_ref: str = DEFAULT_AWX_REF,
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
-        platform: str = "linux/amd64",
+        platform: str = DEFAULT_PLATFORM,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
         ssh_auth_sock: str = "",
     ) -> dagger.Container:
         """Build the AWX proof-of-concept image."""
-        resolved_sha = (
-            await self._python(source)
-            .with_exec(
-                [
-                    "uv",
-                    "run",
-                    "awx-docker",
-                    "resolve-ref",
-                    "--awx-repo",
-                    awx_repo,
-                    "--awx-ref",
-                    awx_ref,
-                ]
-            )
-            .stdout()
-        ).strip()
-        source = await self._write_metadata(
+        source, resolved_sha = await self._prepare_image_source(
+            source, image_name, image_tag, awx_repo, awx_ref, platform
+        )
+        return self._build_image_from_source(
             source,
-            image_name,
-            image_tag,
             awx_repo,
             awx_ref,
             resolved_sha,
+            image_name,
+            image_tag,
             platform,
+            receptor_image,
+            ssh_auth_sock,
         )
+
+    def _build_image_from_source(
+        self,
+        source: dagger.Directory,
+        awx_repo: str,
+        awx_ref: str,
+        resolved_sha: str,
+        image_name: str,
+        image_tag: str,
+        platform: str,
+        receptor_image: str,
+        ssh_auth_sock: str,
+    ) -> dagger.Container:
         ssh = dag.host().unix_socket(ssh_auth_sock) if ssh_auth_sock else None
         return (
             source.docker_build(
@@ -152,14 +155,33 @@ class AwxDocker:
         awx_ref: str = DEFAULT_AWX_REF,
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
+        platform: str = DEFAULT_PLATFORM,
+        receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        ssh_auth_sock: str = "",
     ) -> dagger.Directory:
         """Verify image contents and return evidence files."""
-        image = await self.image_build(source, awx_repo, awx_ref, image_name, image_tag)
+        source, resolved_sha = await self._prepare_image_source(
+            source, image_name, image_tag, awx_repo, awx_ref, platform
+        )
+        image = self._build_image_from_source(
+            source,
+            awx_repo,
+            awx_ref,
+            resolved_sha,
+            image_name,
+            image_tag,
+            platform,
+            receptor_image,
+            ssh_auth_sock,
+        )
         image_ref = f"{image_name}:{image_tag}"
         verified = image.with_exec(
             ["/usr/local/libexec/awx-docker/verify-runtime-contract", image_ref]
         )
-        return verified.directory("/tmp/awx-docker-evidence")
+        return source.with_directory(
+            "build/evidence",
+            verified.directory("/tmp/awx-docker-evidence"),
+        ).directory("build/evidence")
 
     @function
     async def release_check(
@@ -281,3 +303,39 @@ class AwxDocker:
             ]
         )
         return source.with_directory("build/evidence", ctr.directory("build/evidence"))
+
+    async def _prepare_image_source(
+        self,
+        source: dagger.Directory,
+        image_name: str,
+        image_tag: str,
+        awx_repo: str,
+        requested_ref: str,
+        platform: str,
+    ) -> tuple[dagger.Directory, str]:
+        resolved_ref = (
+            await self._python(source)
+            .with_exec(
+                [
+                    "uv",
+                    "run",
+                    "awx-docker",
+                    "resolve-ref",
+                    "--awx-repo",
+                    awx_repo,
+                    "--awx-ref",
+                    requested_ref,
+                ]
+            )
+            .stdout()
+        ).strip()
+        source = await self._write_metadata(
+            source,
+            image_name,
+            image_tag,
+            awx_repo,
+            requested_ref,
+            resolved_ref,
+            platform,
+        )
+        return source, resolved_ref
