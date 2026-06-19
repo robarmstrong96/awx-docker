@@ -219,6 +219,7 @@ class AwxDocker:
                     "--no-install-recommends",
                     "ca-certificates",
                     "curl",
+                    "git",
                     "shellcheck",
                     "shfmt",
                     "tar",
