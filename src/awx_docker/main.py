@@ -22,6 +22,7 @@ class AwxDocker:
     async def strict_check(self, source: dagger.Directory) -> str:
         """Run fast checks plus stricter advisory validation."""
         ctr = self._check_container(source)
+        ctr = self._with_strict_tools(ctr)
         ctr = ctr.with_exec(["uv", "run", "pyright", "src", "tests"])
         ctr = ctr.with_exec(["hadolint", "-c", ".hadolint.yaml", "docker/awx/Dockerfile"])
         ctr = ctr.with_exec(["uv", "run", "yamllint", "."])
@@ -295,6 +296,26 @@ class AwxDocker:
     def _policy_test_container(self, source: dagger.Directory) -> dagger.Container:
         return self._code_quality_container(source).with_exec(["uv", "run", "pytest", "tests/unit"])
 
+    def _with_strict_tools(self, ctr: dagger.Container) -> dagger.Container:
+        hadolint_url = (
+            "https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64"
+        )
+        return (
+            ctr.with_exec(["apt-get", "update"])
+            .with_exec(
+                [
+                    "apt-get",
+                    "install",
+                    "-y",
+                    "--no-install-recommends",
+                    "libatomic1",
+                    "shfmt",
+                ]
+            )
+            .with_exec(["curl", "-fsSL", "-o", "/usr/local/bin/hadolint", hadolint_url])
+            .with_exec(["chmod", "+x", "/usr/local/bin/hadolint"])
+        )
+
     def _python(self, source: dagger.Directory) -> dagger.Container:
         return (
             dag.container()
@@ -321,9 +342,6 @@ class AwxDocker:
             "https://github.com/rhysd/actionlint/releases/download/v1.7.7/"
             "actionlint_1.7.7_linux_amd64.tar.gz"
         )
-        hadolint_url = (
-            "https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64"
-        )
         return (
             self._python(source)
             .with_exec(["apt-get", "update"])
@@ -336,9 +354,7 @@ class AwxDocker:
                     "ca-certificates",
                     "curl",
                     "git",
-                    "libatomic1",
                     "shellcheck",
-                    "shfmt",
                     "tar",
                 ]
             )
@@ -349,8 +365,7 @@ class AwxDocker:
                     f"curl -fsSL {actionlint_url} | tar -xz -C /usr/local/bin actionlint",
                 ]
             )
-            .with_exec(["curl", "-fsSL", "-o", "/usr/local/bin/hadolint", hadolint_url])
-            .with_exec(["chmod", "+x", "/usr/local/bin/actionlint", "/usr/local/bin/hadolint"])
+            .with_exec(["chmod", "+x", "/usr/local/bin/actionlint"])
         )
 
     async def _write_metadata(
