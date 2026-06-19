@@ -21,6 +21,7 @@ forbidden_patterns:
 required_files:
   - LICENSE
   - NOTICE
+  - THIRD_PARTY_NOTICES.md
   - README.md
   - docs/licensing.md
   - docs/public-release.md

@@ -53,3 +53,13 @@ def test_public_hygiene_allowed_path_exception(tmp_path: Path) -> None:
 
     assert report.status == "pass"
     assert report.findings == []
+
+
+def test_public_hygiene_missing_required_file_fails(tmp_path: Path) -> None:
+    policy = tmp_path / "policy.yml"
+    write_policy(policy)
+
+    report = scan_public_hygiene(tmp_path, policy, tmp_path / "evidence")
+
+    assert report.status == "fail"
+    assert report.missing_required_files == ["README.md"]
