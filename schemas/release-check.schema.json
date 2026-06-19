@@ -2,13 +2,48 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
   "properties": {
+    "checks": {
+      "additionalProperties": true,
+      "properties": {
+        "public_hygiene": {
+          "type": "string"
+        },
+        "public_hygiene_reason": {
+          "type": "string"
+        },
+        "upstream_health": {
+          "type": "string"
+        },
+        "upstream_health_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "public_hygiene",
+        "public_hygiene_reason",
+        "upstream_health",
+        "upstream_health_reason"
+      ],
+      "type": "object"
+    },
+    "reason": {
+      "type": "string"
+    },
     "schema_version": {
       "const": "awx-docker.release-check/v1"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
     }
   },
   "required": [
     "schema_version",
-    "status"
+    "status",
+    "reason",
+    "checks"
   ],
   "type": "object"
 }

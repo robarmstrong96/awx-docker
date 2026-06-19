@@ -2,8 +2,46 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
   "properties": {
+    "awx": {
+      "additionalProperties": true,
+      "properties": {
+        "git_metadata": {
+          "const": "absent"
+        },
+        "requested_ref": {
+          "type": "string"
+        },
+        "source_revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "git_metadata",
+        "requested_ref",
+        "source_revision"
+      ],
+      "type": "object"
+    },
+    "image": {
+      "additionalProperties": true,
+      "properties": {
+        "ref": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref"
+      ],
+      "type": "object"
+    },
     "schema_version": {
       "const": "awx-docker.image-verification/v1"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
     }
   },
   "required": [
