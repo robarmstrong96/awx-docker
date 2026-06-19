@@ -1,10 +1,13 @@
-.PHONY: check format lint test upstream-health build verify-image public-readiness publication-gate evidence help
+.PHONY: check strict-check format lint test upstream-health build verify-image public-readiness publication-gate evidence help
 
 help:
 	@dagger functions
 
 check:
 	@dagger call check --source=.
+
+strict-check:
+	@dagger call strict-check --source=.
 
 format:
 	@dagger call format --source=.

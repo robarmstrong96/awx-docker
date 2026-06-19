@@ -16,24 +16,27 @@ class AwxDocker:
     @function
     async def check(self, source: dagger.Directory) -> str:
         """Run fast local quality checks."""
-        ctr = self._tools(source)
-        ctr = ctr.with_exec(["uv", "run", "ruff", "format", "--check", "."])
-        ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
+        return await self._check_container(source).stdout()
+
+    @function
+    async def strict_check(self, source: dagger.Directory) -> str:
+        """Run fast checks plus stricter advisory validation."""
+        ctr = self._check_container(source)
         ctr = ctr.with_exec(["uv", "run", "pyright", "src", "tests"])
-        ctr = ctr.with_exec(["uv", "run", "pytest"])
-        ctr = ctr.with_exec(["shellcheck", "scripts/runtime-entrypoint.sh"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-rpms"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-source"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-awx-python-deps"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
-        ctr = ctr.with_exec(["shfmt", "-d", "scripts", "docker/awx/bin"])
-        ctr = ctr.with_exec(["uv", "run", "yamllint", "."])
-        ctr = ctr.with_exec(["actionlint"])
         ctr = ctr.with_exec(["hadolint", "-c", ".hadolint.yaml", "docker/awx/Dockerfile"])
-        ctr = ctr.with_exec(["uv", "run", "awx-docker", "public-hygiene"])
+        ctr = ctr.with_exec(["uv", "run", "yamllint", "."])
+        ctr = ctr.with_exec(["shfmt", "-d", "scripts", "docker/awx/bin"])
         return await ctr.stdout()
+
+    @function
+    async def code_quality(self, source: dagger.Directory) -> str:
+        """Run fast formatting, lint, shell, and workflow checks."""
+        return await self._code_quality_container(source).stdout()
+
+    @function
+    async def policy_tests(self, source: dagger.Directory) -> str:
+        """Run unit tests for policy and report behavior."""
+        return await self._policy_test_container(source).stdout()
 
     @function
     async def format(self, source: dagger.Directory) -> str:
@@ -270,6 +273,27 @@ class AwxDocker:
 
     def _with_public_hygiene_evidence(self, source: dagger.Directory) -> dagger.Container:
         return self._python(source).with_exec(["uv", "run", "awx-docker", "public-hygiene"])
+
+    def _check_container(self, source: dagger.Directory) -> dagger.Container:
+        return self._policy_test_container(source).with_exec(
+            ["uv", "run", "awx-docker", "public-hygiene"]
+        )
+
+    def _code_quality_container(self, source: dagger.Directory) -> dagger.Container:
+        ctr = self._tools(source)
+        ctr = ctr.with_exec(["uv", "run", "ruff", "format", "--check", "."])
+        ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
+        ctr = ctr.with_exec(["shellcheck", "scripts/runtime-entrypoint.sh"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-rpms"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-source"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-awx-python-deps"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
+        return ctr.with_exec(["actionlint"])
+
+    def _policy_test_container(self, source: dagger.Directory) -> dagger.Container:
+        return self._code_quality_container(source).with_exec(["uv", "run", "pytest", "tests/unit"])
 
     def _python(self, source: dagger.Directory) -> dagger.Container:
         return (

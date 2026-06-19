@@ -17,6 +17,7 @@ def dry_run(target: str) -> str:
 
 def test_make_check_is_dagger_alias() -> None:
     assert dry_run("check") == "dagger call check --source=."
+    assert dry_run("strict-check") == "dagger call strict-check --source=."
 
 
 def test_make_upstream_health_is_dagger_alias() -> None:

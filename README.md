@@ -26,6 +26,7 @@ These commands are provided for convenience.
 
 ```bash
 make check
+make strict-check
 make build
 make verify-image
 make upstream-health
