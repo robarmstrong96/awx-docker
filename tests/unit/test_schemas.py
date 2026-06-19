@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 from jsonschema import ValidationError, validate
 
 from awx_docker.cli import cmd_release_check
@@ -99,6 +100,34 @@ def test_upstream_health_schema_requires_nested_contract() -> None:
 
     with pytest.raises(ValidationError):
         validate(report, schema("upstream-health-report"))
+
+
+def test_public_hygiene_schema_requires_finding_contract(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("ok\n")
+    forbidden_path = "/" + "home/example"
+    (tmp_path / "notes.txt").write_text(f"path {forbidden_path} should not ship\n")
+    policy = tmp_path / "policy.yml"
+    policy.write_text(
+        yaml.safe_dump(
+            {
+                "schema": "awx-docker.public-hygiene/v1",
+                "forbidden_patterns": [
+                    {
+                        "name": "local-home-path",
+                        "pattern": "/" + "home/",
+                        "severity": "fail",
+                    }
+                ],
+                "required_files": ["README.md"],
+            },
+            sort_keys=True,
+        )
+    )
+    report = scan_public_hygiene(tmp_path, policy, tmp_path / "evidence").to_dict()
+    del report["findings"][0]["line"]
+
+    with pytest.raises(ValidationError):
+        validate(report, schema("public-hygiene"))
 
 
 def test_generated_release_check_matches_schema(monkeypatch, tmp_path: Path) -> None:
