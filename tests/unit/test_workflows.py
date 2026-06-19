@@ -41,6 +41,16 @@ def test_dagger_workflows_use_pinned_engine_version() -> None:
                     assert step["with"]["version"] == "v0.21.4"
 
 
+def test_dagger_github_token_secret_is_exposed_to_steps() -> None:
+    for path in WORKFLOWS.glob("*.yml"):
+        data = workflow(path.name)
+        for job in data["jobs"].values():
+            for step in job["steps"]:
+                dagger_args = step.get("with", {}).get("args", "")
+                if "--github-token=env://GITHUB_TOKEN" in dagger_args:
+                    assert step.get("env", {}).get("GITHUB_TOKEN") == "${{ github.token }}"
+
+
 def test_evidence_workflows_upload_artifacts() -> None:
     evidence_workflows = [
         "image-pipeline.yml",
