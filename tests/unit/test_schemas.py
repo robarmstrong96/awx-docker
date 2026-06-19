@@ -220,6 +220,8 @@ def test_generated_publication_gate_matches_schema(monkeypatch, tmp_path: Path) 
             provider="auto",
             signal_file=None,
             resolved_revision=None,
+            from_lock=False,
+            purpose="repository",
             evidence_dir=str(tmp_path),
         )
     )

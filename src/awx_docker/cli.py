@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -34,6 +35,13 @@ from awx_docker.production.lock import branch_policy_errors
 from awx_docker.public_readiness import scan_public_readiness
 from awx_docker.upstream import write_upstream_health
 
+PUBLICATION_PURPOSES = {
+    "repository",
+    "image-publication",
+    "production-admission",
+    "production-promotion",
+}
+
 
 def root_dir() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -44,19 +52,21 @@ def evidence_dir(value: str | None = None) -> Path:
 
 
 def cmd_resolve_ref(args: argparse.Namespace) -> int:
-    print(resolve_ref(args.awx_repo, args.awx_ref))
+    print(resolve_ref(args.upstream_repository, args.upstream_ref))
     return 0
 
 
 def cmd_write_metadata(args: argparse.Namespace) -> int:
-    resolved = args.awx_resolved_ref or resolve_ref(args.awx_repo, args.awx_ref)
+    resolved = args.upstream_resolved_revision or resolve_ref(
+        args.upstream_repository, args.upstream_ref
+    )
     write_build_metadata(
         root_dir(),
         evidence_dir(args.evidence_dir),
         args.image_name,
         args.image_tag,
-        args.awx_repo,
-        args.awx_requested_ref or args.awx_ref,
+        args.upstream_repository,
+        args.upstream_requested_ref or args.upstream_ref,
         resolved,
         args.platform,
     )
@@ -136,7 +146,10 @@ def run_publication_gate(
     signal_file: str | None,
     resolved_revision: str | None,
     evidence: Path,
+    purpose: str = "repository",
 ) -> SimpleNamespace:
+    policy = yaml.safe_load((root_dir() / "policies/image-publication.yml").read_text())
+    required_checks = required_publication_checks(policy, purpose)
     readiness = scan_public_readiness(
         root_dir(),
         root_dir() / "policies/public-readiness.yml",
@@ -153,40 +166,39 @@ def run_publication_gate(
         Path(signal_file) if signal_file else None,
         resolved_revision,
     )
-    failed = readiness.status == "fail" or upstream.decision.blocking
+    image_status, image_reason = image_verification_check(
+        evidence, required="image-verification" in required_checks
+    )
+    upstream_health_reason = upstream.decision.reason
+    missing_required = missing_publication_evidence(
+        required_checks,
+        readiness.status,
+        upstream.decision.blocking,
+        upstream_health_reason,
+        image_status,
+        image_reason,
+    )
+    failed = bool(missing_required)
     status = "fail" if failed else "pass"
     public_readiness_reason = (
         "Public readiness passed." if readiness.status != "fail" else "Public readiness failed."
     )
-    upstream_health_reason = upstream.decision.reason
-    reason_parts = []
-    if readiness.status == "fail":
-        reason_parts.append(public_readiness_reason)
-    if upstream.decision.blocking:
-        reason_parts.append(upstream_health_reason)
+    reason_parts = missing_required
     reason = " ".join(reason_parts) if reason_parts else "Publication gate passed."
-    data = {
-        "schema_version": "awx-docker.publication-gate/v1",
-        "status": status,
-        "reason": reason,
-        "checks": {
+    write_publication_gate_report(
+        evidence,
+        purpose,
+        policy.get("schema", ""),
+        required_checks,
+        status,
+        reason,
+        {
             "public_readiness": readiness.status,
             "public_readiness_reason": public_readiness_reason,
             "upstream_health": upstream.decision.state,
             "upstream_health_reason": upstream_health_reason,
-        },
-    }
-    write_json(evidence / "publication-gate.json", data)
-    write_markdown(
-        evidence / "publication-gate.md",
-        "Publication Gate",
-        {
-            "status": f"`{status}`",
-            "reason": reason,
-            "public_readiness": f"`{readiness.status}`",
-            "public_readiness_reason": public_readiness_reason,
-            "upstream_health": f"`{upstream.decision.state}`",
-            "upstream_health_reason": upstream_health_reason,
+            "image_verification": image_status,
+            "image_verification_reason": image_reason,
         },
     )
     return SimpleNamespace(
@@ -195,25 +207,148 @@ def run_publication_gate(
         public_readiness_status=readiness.status,
         upstream_health_status=upstream.decision.state,
         upstream_health_blocking=upstream.decision.blocking,
+        image_verification_status=image_status,
     )
 
 
 def cmd_publication_gate(args: argparse.Namespace) -> int:
     evidence = evidence_dir(args.evidence_dir)
-    upstream_repository = getattr(args, "upstream_repository", None) or getattr(
-        args, "awx_repo", DEFAULT_AWX_REPO
-    )
-    upstream_ref = getattr(args, "upstream_ref", None) or getattr(args, "awx_ref", DEFAULT_AWX_REF)
+    purpose = getattr(args, "purpose", "repository")
+    if purpose not in PUBLICATION_PURPOSES:
+        print(f"publication-gate: fail (unknown publication purpose: {purpose})")
+        return 1
+    if getattr(args, "from_lock", False):
+        try:
+            lock = load_lock(root_dir() / "awx.lock.yml")
+        except FileNotFoundError:
+            lock = None
+            lock_errors = ["awx.lock.yml is missing"]
+        else:
+            lock_errors = validate_lock(
+                lock,
+                require_promotion_evidence=purpose.startswith("production"),
+            )
+        if lock_errors:
+            policy = yaml.safe_load((root_dir() / "policies/image-publication.yml").read_text())
+            required_checks = required_publication_checks(policy, purpose)
+            reason = "; ".join(lock_errors)
+            write_publication_gate_report(
+                evidence,
+                purpose,
+                policy.get("schema", ""),
+                required_checks,
+                "fail",
+                reason,
+                {
+                    "lock_file": "fail",
+                    "lock_file_reason": reason,
+                    "public_readiness": "not_run",
+                    "public_readiness_reason": "Lock validation failed.",
+                    "upstream_health": "not_run",
+                    "upstream_health_reason": "Lock validation failed.",
+                    "image_verification": "not_required",
+                    "image_verification_reason": (
+                        "Image verification is not required for this gate."
+                    ),
+                },
+            )
+            print(f"publication-gate: fail ({reason})")
+            return 1
+        assert lock is not None
+        upstream_repository = lock["upstream"]["repository"]
+        upstream_ref = lock["upstream"]["requested_ref"]
+        resolved_revision = lock["upstream"]["resolved_revision"]
+    else:
+        upstream_repository = getattr(args, "upstream_repository", DEFAULT_AWX_REPO)
+        upstream_ref = getattr(args, "upstream_ref", DEFAULT_AWX_REF)
+        resolved_revision = getattr(args, "resolved_revision", None)
     gate = run_publication_gate(
         upstream_repository,
         upstream_ref,
         getattr(args, "provider", "auto"),
         getattr(args, "signal_file", None),
-        getattr(args, "resolved_revision", None),
+        resolved_revision,
         evidence,
+        purpose,
     )
     print(f"publication-gate: {gate.status} ({gate.reason})")
     return 1 if gate.status == "fail" else 0
+
+
+def required_publication_checks(policy: dict, purpose: str) -> list[str]:
+    context = (policy.get("contexts") or {}).get(purpose)
+    if isinstance(context, dict):
+        checks = context.get("required_checks", [])
+    else:
+        checks = policy.get("required_checks", [])
+    return [str(check) for check in checks]
+
+
+def image_verification_check(evidence: Path, *, required: bool) -> tuple[str, str]:
+    report_path = evidence / "image-verification.json"
+    if not report_path.exists():
+        if required:
+            return "fail", "image-verification.json is required but was not found."
+        return "not_required", "Image verification is not required for this gate."
+    try:
+        data = json.loads(report_path.read_text())
+    except json.JSONDecodeError as exc:
+        return "fail", f"image-verification.json is invalid JSON: {exc}"
+    if data.get("status") == "passed":
+        return "pass", "Image verification passed."
+    return "fail", "Image verification did not pass."
+
+
+def missing_publication_evidence(
+    required_checks: list[str],
+    public_readiness_status: str,
+    upstream_health_blocking: bool,
+    upstream_health_reason: str,
+    image_verification_status: str,
+    image_verification_reason: str,
+) -> list[str]:
+    failures = []
+    if "public-readiness" in required_checks and public_readiness_status == "fail":
+        failures.append("Public readiness failed.")
+    if "upstream-health" in required_checks and upstream_health_blocking:
+        failures.append(upstream_health_reason)
+    if "image-verification" in required_checks and image_verification_status != "pass":
+        failures.append(image_verification_reason)
+    return failures
+
+
+def write_publication_gate_report(
+    evidence: Path,
+    purpose: str,
+    policy_schema: str,
+    required_checks: list[str],
+    status: str,
+    reason: str,
+    checks: dict[str, str | bool],
+) -> None:
+    data = {
+        "schema_version": "awx-docker.publication-gate/v1",
+        "status": status,
+        "reason": reason,
+        "purpose": purpose,
+        "policy": {
+            "schema": policy_schema,
+            "required_checks": required_checks,
+        },
+        "checks": checks,
+    }
+    write_json(evidence / "publication-gate.json", data)
+    write_markdown(
+        evidence / "publication-gate.md",
+        "Publication Gate",
+        {
+            "status": f"`{status}`",
+            "purpose": f"`{purpose}`",
+            "reason": reason,
+            "required_checks": ", ".join(required_checks),
+            **{key: value for key, value in checks.items() if key.endswith("_reason")},
+        },
+    )
 
 
 def cmd_promote_candidate(args: argparse.Namespace) -> int:
@@ -225,6 +360,7 @@ def cmd_promote_candidate(args: argparse.Namespace) -> int:
         args.image_name,
         args.image_tag,
         evidence_run_url=args.evidence_run_url,
+        evidence_waiver=args.evidence_waiver,
         promoted_by=args.promoted_by,
         notes=args.notes,
     )
@@ -246,7 +382,7 @@ def cmd_production_admission(args: argparse.Namespace) -> int:
     lock = None
     if lock_present:
         lock = load_lock(lock_path)
-        lock_errors = validate_lock(lock)
+        lock_errors = validate_lock(lock, require_promotion_evidence=True)
     else:
         lock_errors = ["awx.lock.yml is missing"]
 
@@ -271,6 +407,7 @@ def cmd_production_admission(args: argparse.Namespace) -> int:
             args.signal_file,
             lock["upstream"]["resolved_revision"],
             evidence,
+            "production-admission",
         )
 
     report = write_production_admission(
@@ -288,7 +425,7 @@ def cmd_production_admission(args: argparse.Namespace) -> int:
 
 def cmd_write_production_pipeline(args: argparse.Namespace) -> int:
     lock = load_lock(root_dir() / "awx.lock.yml")
-    errors = validate_lock(lock)
+    errors = validate_lock(lock, require_promotion_evidence=True)
     if errors:
         print(f"production-pipeline: fail ({'; '.join(errors)})")
         return 1
@@ -302,15 +439,43 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(required=True)
 
     resolve = sub.add_parser("resolve-ref")
-    resolve.add_argument("--awx-repo", default=os.environ.get("AWX_REPO", DEFAULT_AWX_REPO))
-    resolve.add_argument("--awx-ref", default=os.environ.get("AWX_REF", DEFAULT_AWX_REF))
+    resolve.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    resolve.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    resolve.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
+    resolve.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
     resolve.set_defaults(func=cmd_resolve_ref)
 
     metadata = sub.add_parser("write-metadata")
-    metadata.add_argument("--awx-repo", default=os.environ.get("AWX_REPO", DEFAULT_AWX_REPO))
-    metadata.add_argument("--awx-ref", default=os.environ.get("AWX_REF", DEFAULT_AWX_REF))
-    metadata.add_argument("--awx-requested-ref", default=os.environ.get("AWX_REQUESTED_REF"))
-    metadata.add_argument("--awx-resolved-ref", default=os.environ.get("AWX_RESOLVED_REF"))
+    metadata.add_argument(
+        "--upstream-repository",
+        default=os.environ.get("UPSTREAM_REPOSITORY", os.environ.get("AWX_REPO", DEFAULT_AWX_REPO)),
+    )
+    metadata.add_argument(
+        "--upstream-ref",
+        default=os.environ.get("UPSTREAM_REF", os.environ.get("AWX_REF", DEFAULT_AWX_REF)),
+    )
+    metadata.add_argument(
+        "--upstream-requested-ref",
+        default=os.environ.get("UPSTREAM_REQUESTED_REF", os.environ.get("AWX_REQUESTED_REF")),
+    )
+    metadata.add_argument(
+        "--upstream-resolved-revision",
+        default=os.environ.get("UPSTREAM_RESOLVED_REVISION", os.environ.get("AWX_RESOLVED_REF")),
+    )
+    metadata.add_argument("--awx-repo", dest="upstream_repository", help=argparse.SUPPRESS)
+    metadata.add_argument("--awx-ref", dest="upstream_ref", help=argparse.SUPPRESS)
+    metadata.add_argument(
+        "--awx-requested-ref", dest="upstream_requested_ref", help=argparse.SUPPRESS
+    )
+    metadata.add_argument(
+        "--awx-resolved-ref", dest="upstream_resolved_revision", help=argparse.SUPPRESS
+    )
     metadata.add_argument("--image-name", default=os.environ.get("IMAGE_NAME", DEFAULT_IMAGE_NAME))
     metadata.add_argument("--image-tag", default=os.environ.get("IMAGE_TAG", DEFAULT_IMAGE_TAG))
     metadata.add_argument("--platform", default=os.environ.get("PLATFORM", DEFAULT_PLATFORM))
@@ -410,6 +575,10 @@ def build_parser() -> argparse.ArgumentParser:
     publication.add_argument(
         "--resolved-revision", default=os.environ.get("UPSTREAM_RESOLVED_REVISION")
     )
+    publication.add_argument("--from-lock", action="store_true")
+    publication.add_argument(
+        "--purpose", default=os.environ.get("PUBLICATION_PURPOSE", "repository")
+    )
     publication.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     publication.set_defaults(func=cmd_publication_gate)
 
@@ -429,6 +598,7 @@ def build_parser() -> argparse.ArgumentParser:
     promote.add_argument("--image-tag", default=os.environ.get("IMAGE_TAG", DEFAULT_IMAGE_TAG))
     promote.add_argument("--promoted-by", default=os.environ.get("PROMOTED_BY", ""))
     promote.add_argument("--evidence-run-url", default=os.environ.get("EVIDENCE_RUN_URL", ""))
+    promote.add_argument("--evidence-waiver", default=os.environ.get("EVIDENCE_WAIVER", ""))
     promote.add_argument("--notes", default=os.environ.get("PROMOTION_NOTES", ""))
     promote.add_argument("--evidence-dir", default=os.environ.get("EVIDENCE_DIR"))
     promote.set_defaults(func=cmd_promote_candidate)

@@ -32,7 +32,6 @@ jobs:
             export --path=build/evidence
 
       - name: Upload evidence reports
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: production-admission-evidence
@@ -55,13 +54,13 @@ jobs:
           args: >-
             publication-gate
             --source=.
-            --upstream-ref=devel
+            --from-lock=true
+            --purpose=production-admission
             --provider=auto
             --github-token=env://GITHUB_TOKEN
             export --path=build/evidence
 
       - name: Upload evidence reports
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: production-publication-gate-evidence

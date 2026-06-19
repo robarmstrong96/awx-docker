@@ -8,6 +8,29 @@ required_checks:
   - upstream-health
   - image-verification
 
+contexts:
+  repository:
+    required_checks:
+      - public-readiness
+      - upstream-health
+
+  production-admission:
+    required_checks:
+      - public-readiness
+      - upstream-health
+
+  image-publication:
+    required_checks:
+      - public-readiness
+      - upstream-health
+      - image-verification
+
+  production-promotion:
+    required_checks:
+      - public-readiness
+      - upstream-health
+      - image-verification
+
 branding:
   official_claims_allowed: false
   logos_allowed: false

@@ -1,4 +1,4 @@
-.PHONY: check strict-check format lint test upstream-health build verify-image public-readiness publication-gate promote-candidate production-admission production-pipeline evidence help
+.PHONY: check strict-check format lint test upstream-health build public-readiness publication-gate promote-candidate production-admission production-pipeline help
 
 help:
 	@dagger functions
@@ -24,9 +24,6 @@ upstream-health:
 build:
 	@dagger call image-pipeline --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
 
-verify-image:
-	@dagger call image-verify --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
-
 public-readiness:
 	@dagger call public-readiness --source=.
 
@@ -41,6 +38,3 @@ production-admission:
 
 production-pipeline:
 	@dagger call production-pipeline --source=. --provider="$${UPSTREAM_PROVIDER:-auto}"
-
-evidence:
-	@dagger call evidence --source=.

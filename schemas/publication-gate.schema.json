@@ -16,15 +16,54 @@
         },
         "upstream_health_reason": {
           "type": "string"
+        },
+        "image_verification": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_required"
+          ]
+        },
+        "image_verification_reason": {
+          "type": "string"
         }
       },
       "required": [
         "public_readiness",
         "public_readiness_reason",
         "upstream_health",
-        "upstream_health_reason"
+        "upstream_health_reason",
+        "image_verification",
+        "image_verification_reason"
       ],
       "type": "object"
+    },
+    "policy": {
+      "additionalProperties": true,
+      "properties": {
+        "required_checks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "required_checks"
+      ],
+      "type": "object"
+    },
+    "purpose": {
+      "enum": [
+        "repository",
+        "image-publication",
+        "production-admission",
+        "production-promotion"
+      ]
     },
     "reason": {
       "type": "string"
@@ -43,6 +82,8 @@
     "schema_version",
     "status",
     "reason",
+    "purpose",
+    "policy",
     "checks"
   ],
   "type": "object"

@@ -5,7 +5,7 @@ name: Image Pipeline
     - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
-      awx_ref:
+      upstream_ref:
         description: AWX branch, tag, or commit to build
         required: true
         default: devel
@@ -28,7 +28,7 @@ jobs:
     name: Build and verify candidate
     runs-on: ubuntu-latest
     env:
-      AWX_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.awx_ref || 'devel' }}
+      UPSTREAM_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.upstream_ref || 'devel' }}
       IMAGE_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.image_name || format('ghcr.io/{0}/awx-devel', github.repository_owner) }}
       IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'devel' }}
     steps:
@@ -43,7 +43,7 @@ jobs:
           args: >-
             image-pipeline
             --source=.
-            --upstream-ref=${{ env.AWX_REF }}
+            --upstream-ref=${{ env.UPSTREAM_REF }}
             --provider=auto
             --image-name=${{ env.IMAGE_NAME }}
             --image-tag=${{ env.IMAGE_TAG }}
@@ -51,7 +51,6 @@ jobs:
             export --path=build/evidence
 
       - name: Upload evidence reports
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: image-pipeline-evidence

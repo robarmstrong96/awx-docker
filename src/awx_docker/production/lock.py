@@ -46,6 +46,7 @@ def build_lock(
     source_branch: str = "development",
     promoted_by: str = "",
     evidence_run_url: str = "",
+    evidence_waiver: str = "",
     notes: str = "",
 ) -> dict[str, Any]:
     return {
@@ -61,6 +62,7 @@ def build_lock(
             "source_branch": source_branch,
             "promoted_by": promoted_by,
             "evidence_run_url": evidence_run_url,
+            "evidence_waiver": evidence_waiver,
             "notes": notes,
         },
     }
@@ -70,7 +72,11 @@ def write_lock(path: Path, lock: Mapping[str, Any]) -> None:
     path.write_text(yaml.safe_dump(dict(lock), sort_keys=False))
 
 
-def validate_lock(lock: Mapping[str, Any]) -> list[str]:
+def validate_lock(
+    lock: Mapping[str, Any],
+    *,
+    require_promotion_evidence: bool = False,
+) -> list[str]:
     errors = []
     if lock.get("schema") != LOCK_SCHEMA_VERSION:
         errors.append(f"schema must be {LOCK_SCHEMA_VERSION}")
@@ -98,6 +104,14 @@ def validate_lock(lock: Mapping[str, Any]) -> list[str]:
             errors.append(f"image.{key} is required")
     if not promotion.get("source_branch"):
         errors.append("promotion.source_branch is required")
+    if require_promotion_evidence:
+        if not promotion.get("promoted_by"):
+            errors.append("promotion.promoted_by is required for production admission")
+        if not promotion.get("evidence_run_url") and not promotion.get("evidence_waiver"):
+            errors.append(
+                "promotion.evidence_run_url or promotion.evidence_waiver is required "
+                "for production admission"
+            )
     return errors
 
 

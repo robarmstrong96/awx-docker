@@ -100,8 +100,8 @@ class AwxDocker:
     async def resolve_ref(
         self,
         source: dagger.Directory,
-        awx_repo: str = DEFAULT_AWX_REPO,
-        awx_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
     ) -> str:
         """Resolve an AWX branch, tag, or SHA to a concrete upstream SHA."""
         return (
@@ -112,10 +112,10 @@ class AwxDocker:
                     "run",
                     "awx-docker",
                     "resolve-ref",
-                    "--awx-repo",
-                    awx_repo,
-                    "--awx-ref",
-                    awx_ref,
+                    "--upstream-repository",
+                    upstream_repository,
+                    "--upstream-ref",
+                    upstream_ref,
                 ]
             )
             .stdout()
@@ -130,8 +130,8 @@ class AwxDocker:
     async def image_build(
         self,
         source: dagger.Directory,
-        awx_repo: str = DEFAULT_AWX_REPO,
-        awx_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -141,12 +141,18 @@ class AwxDocker:
     ) -> dagger.Container:
         """Build the AWX proof-of-concept image as a lower-level operation."""
         source, resolved_sha = await self._prepare_image_source(
-            source, image_name, image_tag, awx_repo, awx_ref, platform, resolved_revision
+            source,
+            image_name,
+            image_tag,
+            upstream_repository,
+            upstream_ref,
+            platform,
+            resolved_revision,
         )
         return self._build_image_from_source(
             source,
-            awx_repo,
-            awx_ref,
+            upstream_repository,
+            upstream_ref,
             resolved_sha,
             image_name,
             image_tag,
@@ -193,8 +199,8 @@ class AwxDocker:
     async def image_verify(
         self,
         source: dagger.Directory,
-        awx_repo: str = DEFAULT_AWX_REPO,
-        awx_ref: str = DEFAULT_AWX_REF,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -204,12 +210,18 @@ class AwxDocker:
     ) -> dagger.Directory:
         """Build and verify the image as a lower-level operation."""
         source, resolved_sha = await self._prepare_image_source(
-            source, image_name, image_tag, awx_repo, awx_ref, platform, resolved_revision
+            source,
+            image_name,
+            image_tag,
+            upstream_repository,
+            upstream_ref,
+            platform,
+            resolved_revision,
         )
         image = self._build_image_from_source(
             source,
-            awx_repo,
-            awx_ref,
+            upstream_repository,
+            upstream_ref,
             resolved_sha,
             image_name,
             image_tag,
@@ -341,6 +353,8 @@ class AwxDocker:
                 provider,
                 signal_file,
                 resolved_sha,
+                "image-publication",
+                False,
                 github_token,
             )
         published_ref = await verified.publish(image_ref)
@@ -363,6 +377,8 @@ class AwxDocker:
         provider: str = "auto",
         signal_file: str = "",
         resolved_revision: str = "",
+        purpose: str = "repository",
+        from_lock: bool = False,
         github_token: dagger.Secret | None = None,
     ) -> dagger.Directory:
         """Run checks required before public repository or image publication."""
@@ -373,6 +389,8 @@ class AwxDocker:
             provider,
             signal_file,
             resolved_revision,
+            purpose,
+            from_lock,
             github_token,
         )
 
@@ -483,34 +501,20 @@ class AwxDocker:
             provider,
             signal_file,
             resolved_sha,
+            "production-promotion",
+            False,
             github_token,
         )
         source = await self._write_production_pipeline(source)
         return source.directory("build/evidence")
 
-    @function
-    async def evidence(
-        self,
-        source: dagger.Directory,
-        awx_repo: str = DEFAULT_AWX_REPO,
-        awx_ref: str = DEFAULT_AWX_REF,
-        image_name: str = DEFAULT_IMAGE_NAME,
-        image_tag: str = DEFAULT_IMAGE_TAG,
-        platform: str = DEFAULT_PLATFORM,
-    ) -> dagger.Directory:
-        """Generate lightweight evidence files and return the evidence directory."""
-        source, _ = await self._prepare_image_source(
-            source, image_name, image_tag, awx_repo, awx_ref, platform
-        )
-        return self._with_public_readiness_evidence(source).directory("build/evidence")
-
     def _with_public_readiness_evidence(self, source: dagger.Directory) -> dagger.Container:
         return self._python(source).with_exec(["uv", "run", "awx-docker", "public-readiness"])
 
     def _check_container(self, source: dagger.Directory) -> dagger.Container:
-        return self._policy_test_container(source).with_exec(
-            ["uv", "run", "awx-docker", "public-readiness"]
-        )
+        ctr = self._code_quality_container(source)
+        ctr = ctr.with_exec(["uv", "run", "pytest", "tests/unit"])
+        return ctr.with_exec(["uv", "run", "awx-docker", "public-readiness"])
 
     def _code_quality_container(self, source: dagger.Directory) -> dagger.Container:
         ctr = self._tools(source)
@@ -526,7 +530,7 @@ class AwxDocker:
         return ctr.with_exec(["actionlint"])
 
     def _policy_test_container(self, source: dagger.Directory) -> dagger.Container:
-        return self._code_quality_container(source).with_exec(["uv", "run", "pytest", "tests/unit"])
+        return self._python(source).with_exec(["uv", "run", "pytest", "tests/unit"])
 
     def _with_strict_tools(self, ctr: dagger.Container) -> dagger.Container:
         hadolint_url = (
@@ -620,11 +624,11 @@ class AwxDocker:
                 image_name,
                 "--image-tag",
                 image_tag,
-                "--awx-repo",
+                "--upstream-repository",
                 awx_repo,
-                "--awx-ref",
+                "--upstream-ref",
                 requested_ref,
-                "--awx-resolved-ref",
+                "--upstream-resolved-revision",
                 resolved_ref,
                 "--platform",
                 platform,
@@ -762,6 +766,8 @@ class AwxDocker:
         provider: str,
         signal_file: str,
         resolved_revision: str,
+        purpose: str,
+        from_lock: bool,
         github_token: dagger.Secret | None,
     ) -> dagger.Directory:
         args = [
@@ -769,15 +775,24 @@ class AwxDocker:
             "run",
             "awx-docker",
             "publication-gate",
-            "--upstream-repository",
-            upstream_repository,
-            "--upstream-ref",
-            upstream_ref,
             "--provider",
             provider,
-            "--resolved-revision",
-            resolved_revision,
+            "--purpose",
+            purpose,
         ]
+        if from_lock:
+            args.append("--from-lock")
+        else:
+            args.extend(
+                [
+                    "--upstream-repository",
+                    upstream_repository,
+                    "--upstream-ref",
+                    upstream_ref,
+                    "--resolved-revision",
+                    resolved_revision,
+                ]
+            )
         if signal_file:
             args.extend(["--signal-file", signal_file])
         ctr = self._python(source)
@@ -891,9 +906,9 @@ class AwxDocker:
                     "run",
                     "awx-docker",
                     "resolve-ref",
-                    "--awx-repo",
+                    "--upstream-repository",
                     upstream_repository,
-                    "--awx-ref",
+                    "--upstream-ref",
                     upstream_ref,
                 ]
             )
@@ -905,7 +920,7 @@ class AwxDocker:
         lock = yaml.safe_load(contents)
         if not isinstance(lock, dict):
             raise ValueError("awx.lock.yml must contain a mapping")
-        errors = validate_lock(lock)
+        errors = validate_lock(lock, require_promotion_evidence=True)
         if errors:
             raise ValueError("; ".join(errors))
         return lock

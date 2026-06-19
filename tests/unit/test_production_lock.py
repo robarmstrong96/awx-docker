@@ -30,6 +30,38 @@ def test_lockfile_validation_accepts_pinned_revision() -> None:
     assert validate_lock(lock) == []
 
 
+def test_lockfile_validation_requires_promotion_evidence_for_production() -> None:
+    lock = build_lock(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        "ghcr.io/example/awx-devel",
+        "prod-2026-06-19-aaaaaaa",
+        observed_at="2026-06-19T00:00:00Z",
+    )
+
+    assert validate_lock(lock, require_promotion_evidence=True) == [
+        "promotion.promoted_by is required for production admission",
+        "promotion.evidence_run_url or promotion.evidence_waiver is required "
+        "for production admission",
+    ]
+
+
+def test_lockfile_validation_accepts_promotion_evidence_waiver() -> None:
+    lock = build_lock(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        "ghcr.io/example/awx-devel",
+        "prod-2026-06-19-aaaaaaa",
+        observed_at="2026-06-19T00:00:00Z",
+        promoted_by="repository-maintainer",
+        evidence_waiver="manual admission test",
+    )
+
+    assert validate_lock(lock, require_promotion_evidence=True) == []
+
+
 def test_lockfile_validation_rejects_floating_revision() -> None:
     lock = build_lock(
         "https://github.com/ansible/awx.git",
@@ -71,6 +103,7 @@ def test_promote_candidate_writes_valid_lock_and_evidence(monkeypatch, tmp_path:
             image_tag="prod-2026-06-19-bbbbbbb",
             promoted_by="",
             evidence_run_url="",
+            evidence_waiver="",
             notes="",
             evidence_dir=str(tmp_path / "evidence"),
         )

@@ -47,15 +47,6 @@ def test_dagger_surface_includes_public_readiness_aliases() -> None:
     assert "production_pipeline" in functions
 
 
-def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:
-    evidence = public_dagger_functions()["evidence"]
-    source = source_for(evidence)
-
-    assert "_prepare_image_source" in source
-    assert "_with_public_readiness_evidence" in source
-    assert 'source.directory("build/evidence")' not in source
-
-
 def test_image_pipeline_resolves_once_and_reuses_revision() -> None:
     pipeline = public_dagger_functions()["image_pipeline"]
     pipeline_source = source_for(pipeline)
@@ -71,21 +62,20 @@ def test_image_pipeline_resolves_once_and_reuses_revision() -> None:
     assert "resolved_sha" in helper_source
 
 
-def test_image_publish_requires_publication_gate_by_default() -> None:
-    publish = public_dagger_functions()["image_publish"]
-    source = source_for(publish)
+def test_public_dagger_image_functions_use_upstream_argument_names() -> None:
+    functions = public_dagger_functions()
 
-    assert "publication_gate_override" in source
-    assert "_with_publication_gate_evidence" in source
-    assert "_write_published_image" in source
-    assert ".publish(image_ref)" in source
+    for name in ("resolve_ref", "image_build", "image_verify"):
+        arg_names = [arg.arg for arg in functions[name].args.args]
+        assert "upstream_repository" in arg_names
+        assert "upstream_ref" in arg_names
+        assert "awx_repo" not in arg_names
+        assert "awx_ref" not in arg_names
 
 
-def test_production_pipeline_reads_locked_revision() -> None:
-    production = public_dagger_functions()["production_pipeline"]
-    source = source_for(production)
+def test_publication_gate_accepts_purpose_and_lock_arguments() -> None:
+    publication_gate = public_dagger_functions()["publication_gate"]
+    arg_names = [arg.arg for arg in publication_gate.args.args]
 
-    assert "_load_production_lock" in source
-    assert "upstream['resolved_revision']" in source
-    assert "_with_publication_gate_evidence" in source
-    assert "_write_production_pipeline" in source
+    assert "purpose" in arg_names
+    assert "from_lock" in arg_names

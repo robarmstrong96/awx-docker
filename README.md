@@ -42,8 +42,8 @@ make production-admission
 
 Example defaults for the build:
 
-- AWX repo: `https://github.com/ansible/awx.git`
-- AWX ref: `devel`
+- Upstream AWX repo: `https://github.com/ansible/awx.git`
+- Upstream AWX ref: `devel`
 - Upstream health provider: `auto`
 - Image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`

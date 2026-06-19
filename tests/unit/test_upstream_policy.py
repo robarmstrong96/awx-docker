@@ -232,6 +232,51 @@ def test_generic_git_provider_fails_publication_without_ci_signal(
     assert report.decision.state == "fail"
 
 
+def test_generic_git_provider_verifies_supplied_revision_for_publication(
+    monkeypatch, tmp_path: Path
+) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "awx_docker.upstream.providers.generic_git.verify_revision_reachable",
+        lambda repo, revision: calls.append((repo, revision)) or True,
+    )
+
+    report = write_upstream_health(
+        "https://git.example.test/awx.git",
+        "devel",
+        tmp_path,
+        ROOT / "policies/upstream-health.yml",
+        "publication",
+        provider="generic-git",
+        resolved_revision="b" * 40,
+    )
+
+    assert calls == [("https://git.example.test/awx.git", "b" * 40)]
+    assert report.subject.resolved_revision == "b" * 40
+
+
+def test_generic_git_provider_fails_unreachable_supplied_revision_for_publication(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "awx_docker.upstream.providers.generic_git.verify_revision_reachable",
+        lambda repo, revision: False,
+    )
+
+    report = write_upstream_health(
+        "https://git.example.test/awx.git",
+        "devel",
+        tmp_path,
+        ROOT / "policies/upstream-health.yml",
+        "publication",
+        provider="generic-git",
+        resolved_revision="b" * 40,
+    )
+
+    assert report.decision.state == "fail"
+    assert "not reachable" in report.decision.reason
+
+
 def test_file_provider_reads_normalized_signals(tmp_path: Path) -> None:
     signal_file = tmp_path / "signals.json"
     signal_file.write_text(

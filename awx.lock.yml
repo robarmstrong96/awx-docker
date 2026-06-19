@@ -12,6 +12,7 @@ image:
 
 promotion:
   source_branch: development
-  promoted_by: ""
-  evidence_run_url: ""
-  notes: ""
+  promoted_by: repository-maintainer
+  evidence_run_url: https://github.com/robarmstrong96/awx-docker/actions/runs/27841167315
+  evidence_waiver: ""
+  notes: Known-good image-pipeline evidence run for pinned revision.

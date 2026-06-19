@@ -24,6 +24,9 @@
         "evidence_run_url": {
           "type": "string"
         },
+        "evidence_waiver": {
+          "type": "string"
+        },
         "notes": {
           "type": "string"
         },
@@ -38,6 +41,7 @@
         "source_branch",
         "promoted_by",
         "evidence_run_url",
+        "evidence_waiver",
         "notes"
       ],
       "type": "object"

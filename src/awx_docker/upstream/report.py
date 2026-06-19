@@ -65,6 +65,7 @@ def write_upstream_health(
             evidence_dir=evidence_dir,
             signal_file=signal_file,
             resolved_revision=resolved_revision,
+            mode=mode,
         )
     except Exception as exc:
         report = UpstreamHealthReport(

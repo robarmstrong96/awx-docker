@@ -1,5 +1,7 @@
 import re
 import subprocess
+import tempfile
+from pathlib import Path
 
 FULL_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
@@ -39,3 +41,29 @@ def resolve_ref(repo: str, ref: str) -> str:
             tag = sha
 
     return peeled or head or tag or first
+
+
+def verify_revision_reachable(repo: str, revision: str) -> bool:
+    if not FULL_SHA_RE.match(revision):
+        return False
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory)
+        subprocess.run(["git", "init"], cwd=path, check=True, text=True, capture_output=True)
+        fetched = subprocess.run(
+            ["git", "fetch", "--depth=1", repo, revision],
+            cwd=path,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if fetched.returncode != 0:
+            return False
+        checked = subprocess.run(
+            ["git", "cat-file", "-e", f"{revision}^{{commit}}"],
+            cwd=path,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        return checked.returncode == 0

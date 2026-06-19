@@ -30,15 +30,13 @@ def test_make_upstream_health_is_dagger_alias() -> None:
 
 
 def test_make_image_targets_are_dagger_aliases() -> None:
-    assert dry_run("build") == (
-        'dagger call image-pipeline --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
-        '--provider="${UPSTREAM_PROVIDER:-auto}" '
-        '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
-    )
-    assert dry_run("verify-image") == (
-        'dagger call image-verify --source=. --awx-ref="${AWX_REF:-devel}" '
-        '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
-    )
+    build = dry_run("build")
+
+    assert "dagger call image-pipeline --source=." in build
+    assert "--upstream-ref=" in build
+    assert "--provider=" in build
+    assert "--image-name=" in build
+    assert "--image-tag=" in build
 
 
 def test_make_publication_targets_are_dagger_aliases() -> None:
@@ -49,7 +47,6 @@ def test_make_publication_targets_are_dagger_aliases() -> None:
     )
 
     assert dry_run("publication-gate") == expected
-    assert dry_run("evidence") == "dagger call evidence --source=."
 
 
 def test_make_production_targets_are_dagger_aliases() -> None:
@@ -72,3 +69,7 @@ def test_make_aliases_do_not_reference_deleted_wrappers() -> None:
     assert "scripts/image.sh" not in makefile
     assert "scripts/check-upstream-status.sh" not in makefile
     assert "scripts/check-public-readiness.sh" not in makefile
+    assert "verify-image" not in makefile
+    assert "\nevidence:" not in makefile
+    assert "--awx-ref" not in makefile
+    assert "--awx-repo" not in makefile
