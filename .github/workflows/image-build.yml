@@ -71,4 +71,4 @@ jobs:
       - name: Confirm manual publication
         if: ${{ env.PUBLISH_IMAGE == 'true' }}
         run: |
-          echo "Automated image publication is disabled. Review release-check evidence before publishing manually."
+          echo "Automated image publication is disabled. Review publication gate evidence before publishing manually."

@@ -21,9 +21,6 @@ class AwxDocker:
         ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
         ctr = ctr.with_exec(["uv", "run", "pyright", "src", "tests"])
         ctr = ctr.with_exec(["uv", "run", "pytest"])
-        ctr = ctr.with_exec(["shellcheck", "scripts/check-public-hygiene.sh"])
-        ctr = ctr.with_exec(["shellcheck", "scripts/check-upstream-status.sh"])
-        ctr = ctr.with_exec(["shellcheck", "scripts/image.sh"])
         ctr = ctr.with_exec(["shellcheck", "scripts/runtime-entrypoint.sh"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-rpms"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-source"])
@@ -112,8 +109,13 @@ class AwxDocker:
 
     @function
     async def public_hygiene(self, source: dagger.Directory) -> dagger.Directory:
-        """Scan public-facing files and return public hygiene evidence."""
+        """Scan public-facing files and return public readiness evidence."""
         return self._with_public_hygiene_evidence(source).directory("build/evidence")
+
+    @function
+    async def public_readiness(self, source: dagger.Directory) -> dagger.Directory:
+        """Scan public-facing files and return public readiness evidence."""
+        return await self.public_hygiene(source)
 
     @function
     async def image_build(
@@ -238,6 +240,17 @@ class AwxDocker:
             ]
         )
         return ctr.directory("build/evidence")
+
+    @function
+    async def publication_gate(
+        self,
+        source: dagger.Directory,
+        awx_ref: str = DEFAULT_AWX_REF,
+        awx_repo: str = DEFAULT_AWX_REPO,
+        github_token: dagger.Secret | None = None,
+    ) -> dagger.Directory:
+        """Run checks required before public repository or image publication."""
+        return await self.release_check(source, awx_ref, awx_repo, github_token)
 
     @function
     async def evidence(

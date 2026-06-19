@@ -1,4 +1,4 @@
-.PHONY: check format lint test upstream-health build verify-image release-check evidence help
+.PHONY: check format lint test upstream-health build verify-image public-readiness publication-gate evidence help
 
 help:
 	@dagger functions
@@ -24,8 +24,11 @@ build:
 verify-image:
 	@dagger call image-verify --source=. --awx-ref="$${AWX_REF:-devel}" --image-name="$${IMAGE_NAME:-awx-devel}" --image-tag="$${IMAGE_TAG:-devel}"
 
-release-check:
-	@dagger call release-check --source=. --awx-ref="$${AWX_REF:-devel}"
+public-readiness:
+	@dagger call public-readiness --source=.
+
+publication-gate:
+	@dagger call publication-gate --source=. --awx-ref="$${AWX_REF:-devel}"
 
 evidence:
 	@dagger call evidence --source=.

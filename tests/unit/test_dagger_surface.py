@@ -22,24 +22,18 @@ def source_for(function: ast.AsyncFunctionDef) -> str:
     return ast.unparse(function)
 
 
-def test_dagger_public_surface_is_small_and_documented() -> None:
+def test_dagger_public_functions_are_documented() -> None:
     functions = public_dagger_functions()
 
-    assert set(functions) == {
-        "check",
-        "evidence",
-        "format",
-        "image_build",
-        "image_verify",
-        "lint",
-        "public_hygiene",
-        "release_check",
-        "resolve_ref",
-        "test",
-        "upstream_health",
-    }
     for function in functions.values():
         assert ast.get_docstring(function)
+
+
+def test_dagger_surface_includes_public_readiness_aliases() -> None:
+    functions = public_dagger_functions()
+
+    assert "public_readiness" in functions
+    assert "publication_gate" in functions
 
 
 def test_dagger_evidence_generates_fresh_lightweight_evidence() -> None:

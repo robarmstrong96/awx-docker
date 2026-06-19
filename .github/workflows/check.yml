@@ -27,7 +27,7 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR="$HOME/.local/bin" sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Check Makefile shims
+      - name: Check Make aliases
         run: |
           make check
           make upstream-health

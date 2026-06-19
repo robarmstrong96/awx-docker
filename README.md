@@ -17,19 +17,20 @@ dagger call check --source=.
 dagger call upstream-health --source=. --awx-ref=devel
 dagger call image-build --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
 dagger call image-verify --source=. --awx-ref=devel --image-name=awx-devel --image-tag=devel
-dagger call release-check --source=. --awx-ref=devel
+dagger call publication-gate --source=. --awx-ref=devel
 ```
 
-Compatibility shims:
+## Optional Make aliases
 
-These commands are provided for convenience and compatibility with existing Makefile-based workflows. Likely will be removed in the future.
+These commands are provided for convenience.
 
 ```bash
 make check
 make build
 make verify-image
 make upstream-health
-make release-check
+make public-readiness
+make publication-gate
 ```
 
 ## Defaults
