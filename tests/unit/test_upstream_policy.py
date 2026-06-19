@@ -46,12 +46,59 @@ def test_build_failure_blocks() -> None:
     assert report.signals.ci.blocking_failures == ["Build (failure)"]
 
 
+def test_container_build_failure_blocks() -> None:
+    combined, checks = load_fixture("healthy")
+    checks["check_runs"] = [
+        {"name": "Container build", "status": "completed", "conclusion": "failure"},
+        {"name": "lint", "status": "completed", "conclusion": "success"},
+    ]
+    report = build_report(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        combined,
+        checks,
+        POLICY,
+        "scheduled-build",
+    )
+
+    assert report.decision.state == "fail"
+    assert report.signals.ci.blocking_failures == ["Container build (failure)"]
+
+
 def test_sonarcloud_failure_is_non_blocking_evidence() -> None:
     report = report_for("non-blocking-failure", "publication")
 
     assert report.decision.state == "pass"
     assert report.signals.ci.blocking_failures == []
     assert report.signals.ci.non_blocking_failures == ["SonarCloud Code Analysis (failure)"]
+
+
+def test_lint_static_analysis_and_docs_failures_are_non_blocking_evidence() -> None:
+    combined, checks = load_fixture("healthy")
+    checks["check_runs"] = [
+        {"name": "Build", "status": "completed", "conclusion": "success"},
+        {"name": "lint", "status": "completed", "conclusion": "failure"},
+        {"name": "static-analysis", "status": "completed", "conclusion": "failure"},
+        {"name": "docs", "status": "completed", "conclusion": "failure"},
+    ]
+    report = build_report(
+        "https://github.com/ansible/awx.git",
+        "devel",
+        "a" * 40,
+        combined,
+        checks,
+        POLICY,
+        "publication",
+    )
+
+    assert report.decision.state == "pass"
+    assert report.signals.ci.blocking_failures == []
+    assert report.signals.ci.non_blocking_failures == [
+        "lint (failure)",
+        "static-analysis (failure)",
+        "docs (failure)",
+    ]
 
 
 def test_unclassified_failing_check_blocks() -> None:
@@ -77,11 +124,13 @@ def test_check_run_classification_comes_from_policy() -> None:
 
 def test_required_build_signal_warns_scheduled_and_fails_publication() -> None:
     assert decision_for("no-build-success", "scheduled-build") == "warn"
+    assert decision_for("no-build-success", "local") == "warn"
     assert decision_for("no-build-success", "publication") == "fail"
 
 
 def test_missing_signal_warns_scheduled_build_and_fails_publication() -> None:
     assert decision_for("missing-signal", "scheduled-build") == "warn"
+    assert decision_for("missing-signal", "local") == "warn"
     assert decision_for("missing-signal", "publication") == "fail"
 
 

@@ -25,6 +25,15 @@ Modes are configured in `policies/upstream-health.yml`:
 - `local`
 - `publication`
 
+GitHub check classification:
+
+- failing build-like checks block; examples include `Build`, `Container build`,
+  `Image build`, `Docker build`, and `buildx`
+- failing SonarCloud, lint, static-analysis, or docs checks are retained as
+  non-blocking evidence
+- missing CI or missing build-success evidence warns for `local` and
+  `scheduled-build`, but fails for `publication`
+
 Evidence is written under `build/evidence/` when the Python CLI runs locally.
 Dagger functions return evidence directories where practical.
 
