@@ -2,7 +2,8 @@
 
 CI uses Dagger as the command interface.
 
-- `check.yml` runs `dagger call check --source=.`
+- `check.yml` runs `dagger call check --source=.` and then verifies the
+  Makefile compatibility shims with `make check` and `make upstream-health`
 - `image-build.yml` checks upstream health, builds the image, and verifies it
 - `release-check.yml` runs publication readiness checks on demand
 

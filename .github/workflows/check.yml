@@ -22,3 +22,12 @@ jobs:
           version: "latest"
           verb: call
           args: check --source=.
+      - name: Install Dagger CLI
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR="$HOME/.local/bin" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check Makefile shims
+        run: |
+          make check
+          make upstream-health
