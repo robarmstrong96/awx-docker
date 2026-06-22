@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Pin the Dockerfile frontend because this build uses BuildKit RUN mounts.
+# Use a Dockerfile version that supports the SSH mount below.
 
 # ----- Build arguments --------------------------------------------------------
 
@@ -14,14 +14,14 @@ ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
 
 FROM ${RECEPTOR_IMAGE} AS receptor
 
-# ----- AWX source checkout ----------------------------------------------------
+# ----- AWX source -------------------------------------------------------------
 
 FROM ${CENTOS_STREAM_IMAGE} AS awx-source
 ARG AWX_REPO
 ARG AWX_REF
 ARG AWX_REQUESTED_REF
 
-# Keep package installs before source checkout so base dependencies stay cacheable.
+# Install packages before cloning AWX so normal source changes rebuild less.
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/prepare-awx-source /usr/local/libexec/awx-docker/prepare-awx-source
 COPY docker/awx/packages/source.rpms /tmp/packages.rpms
@@ -42,7 +42,7 @@ COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
 RUN make ui
 
-# ----- Python dependency build ------------------------------------------------
+# ----- Python packages --------------------------------------------------------
 
 FROM ${CENTOS_STREAM_IMAGE} AS builder
 
@@ -61,10 +61,8 @@ RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 ARG VERSION
 ARG SETUPTOOLS_SCM_PRETEND_VERSION
 
-# Copy only dependency-resolution inputs so source changes do not invalidate the
-# Python dependency layer unless requirements or Makefile behavior changes.
-# AWX's Makefile owns requirement installation; keep build tools out of the
-# final image while preserving the generated virtualenv.
+# Copy only the files needed to install Python packages.
+# The finished Python environment is copied into the final image later.
 COPY --from=awx-source /awx-src/Makefile /tmp/Makefile
 RUN mkdir /tmp/requirements
 COPY --from=awx-source /awx-src/requirements/requirements.txt /tmp/requirements/requirements.txt
@@ -75,7 +73,7 @@ COPY --from=awx-source /awx-src/requirements/requirements_dev.txt /tmp/requireme
 WORKDIR /tmp
 RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
 
-# ----- Final runtime image ----------------------------------------------------
+# ----- Final image ------------------------------------------------------------
 
 FROM ${CENTOS_STREAM_IMAGE}
 
@@ -106,7 +104,7 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
 
 USER root
 
-# ----- Runtime OS packages ----------------------------------------------------
+# ----- OS packages ------------------------------------------------------------
 
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/synthesize-awx-dist-info /usr/local/libexec/awx-docker/synthesize-awx-dist-info
@@ -117,7 +115,7 @@ COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 
-# ----- Runtime Python tools ---------------------------------------------------
+# ----- Python tools -----------------------------------------------------------
 
 RUN pip3.12 install -vv --no-cache-dir virtualenv supervisor dumb-init build
 RUN pip3.12 install -vv --no-cache-dir git+https://github.com/coderanger/supervisor-stdout.git@973ba19967cdaf46d9c1634d1675fc65b9574f6e
@@ -127,37 +125,37 @@ RUN if [ "$INSTALL_PYTHON_DEBUGINFO" = "true" ]; then \
     fi
 RUN rm -rf /root/.cache && rm -rf /tmp/*
 
-# ----- AWX runtime artifacts --------------------------------------------------
+# ----- AWX runtime files ------------------------------------------------------
 
 COPY --from=builder /var/lib/awx /var/lib/awx
 COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 
 # ----- AWX development source -------------------------------------------------
 
-# Upstream AWX development launcher scripts expect a mounted checkout. This
-# wrapper bakes the cloned source into the image, then removes Git metadata.
+# AWX's dev startup scripts look for the source tree at this path.
+# Copy it into the image, then remove Git history.
 COPY --from=ui-builder /tmp/src /awx_devel
 RUN rm -rf /awx_devel/.git
 
-# ----- License and source metadata -------------------------------------------
+# ----- Licenses and source info ----------------------------------------------
 
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
     cp /awx_devel/LICENSE.md /usr/share/licenses/awx-wrapper/AWX-LICENSE.md && \
     cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION && \
     cp /awx_devel/.awx_requested_ref /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 
-# ----- Runtime executable links ----------------------------------------------
+# ----- Command links ----------------------------------------------------------
 
 RUN ln -s /var/lib/awx/venv/awx/bin/awx-manage /usr/bin/awx-manage
 
-# ----- TLS development certificate -------------------------------------------
+# ----- Development TLS certificate -------------------------------------------
 
 RUN openssl req -nodes -newkey rsa:2048 -keyout /etc/nginx/nginx.key -out /etc/nginx/nginx.csr \
         -subj "/C=US/ST=North Carolina/L=Durham/O=Ansible/OU=AWX Development/CN=awx.localhost" && \
     openssl x509 -req -days 365 -in /etc/nginx/nginx.csr -signkey /etc/nginx/nginx.key -out /etc/nginx/nginx.crt && \
     chmod 640 /etc/nginx/nginx.csr /etc/nginx/nginx.key /etc/nginx/nginx.crt
 
-# ----- Container runtime configuration ---------------------------------------
+# ----- Container tools --------------------------------------------------------
 
 RUN rpm --restore shadow-utils 2>/dev/null || :
 RUN sed -i -e 's|^#mount_program|mount_program|g' -e '/additionalimage.*/a "/var/lib/shared",' -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' /etc/containers/storage.conf
@@ -168,7 +166,7 @@ RUN mkdir -p /etc/containers/registries.conf.d/ && \
 
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/rsyslog.conf /var/lib/awx/rsyslog/rsyslog.conf
 
-# ----- AWX launcher and supervisor files --------------------------------------
+# ----- AWX startup files ------------------------------------------------------
 
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/wait-for-migrations /usr/local/bin/wait-for-migrations
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/stop-supervisor /usr/local/bin/stop-supervisor
@@ -185,9 +183,8 @@ COPY docker/awx/rootfs/ /
 
 # ----- Runtime layout ---------------------------------------------------------
 
-# AWX's development launcher expects editable-package metadata from the mounted
-# checkout. The helper synthesizes only that runtime metadata after the source
-# is baked in and upstream Git data has been stripped.
+# AWX startup expects Python package info next to the copied source.
+# Create that info after Git history is removed.
 RUN /usr/local/libexec/awx-docker/synthesize-awx-dist-info "${AWX_SOURCE_REVISION}"
 RUN /usr/local/libexec/awx-docker/prepare-runtime-layout
 
@@ -195,8 +192,8 @@ WORKDIR /awx_devel
 
 # ----- Network and startup ----------------------------------------------------
 
-# 8043/8013 are nginx listeners for AWX HTTPS and websocket traffic. 8080/22
-# remain exposed for compatibility with upstream AWX development tooling.
+# AWX uses 8043 for HTTPS and 8013 for websocket traffic.
+# Keep 8080 and 22 for AWX dev-tool compatibility.
 EXPOSE 8043 8013 8080 22
 
 ENTRYPOINT ["/usr/local/bin/awx-wrapper-entrypoint"]
