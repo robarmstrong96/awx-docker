@@ -46,10 +46,10 @@ RUN make ui
 
 FROM ${CENTOS_STREAM_IMAGE} AS builder
 
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
-ENV AWX_LOGGING_MODE=stdout
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    AWX_LOGGING_MODE=stdout
 
 USER root
 
@@ -80,20 +80,19 @@ RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
 FROM ${CENTOS_STREAM_IMAGE}
 
 ARG AWX_REPO
-ARG AWX_REF
 ARG AWX_REQUESTED_REF
 ARG AWX_SOURCE_REVISION
 ARG RECEPTOR_IMAGE
 ARG INSTALL_PYTHON_DEBUGINFO=false
 
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
-ENV AWX_LOGGING_MODE=stdout
-ENV HOME=/var/lib/awx
-ENV PATH="/var/lib/awx/venv/awx/bin/:${PATH}"
-ENV SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}"
-ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}"
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    AWX_LOGGING_MODE=stdout \
+    HOME=/var/lib/awx \
+    PATH="/var/lib/awx/venv/awx/bin/:${PATH}" \
+    SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}" \
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}"
 
 LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       org.opencontainers.image.description="AWX POC image built by cloning upstream AWX" \
@@ -102,7 +101,8 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       org.opencontainers.image.vendor="unofficial" \
       dev.awx-wrapper.awx.repo="${AWX_REPO}" \
       dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}" \
-      dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}"
+      dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}" \
+      dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}"
 
 USER root
 
