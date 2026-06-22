@@ -46,6 +46,7 @@ ENV AWX_LOGGING_MODE=stdout
 
 USER root
 
+# Copy/install helper scripts and RPMs for the build stage.
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/install-awx-python-deps /usr/local/libexec/awx-docker/install-awx-python-deps
 COPY docker/awx/packages/python-builder.rpms /tmp/packages.rpms
