@@ -1,9 +1,0 @@
-{
-  "state": "success",
-  "statuses": [
-    {
-      "context": "ci/static",
-      "state": "success"
-    }
-  ]
-}

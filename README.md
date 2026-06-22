@@ -1,102 +1,82 @@
 # AWX Docker Proof-of-Concept Image Builder
 
-This repository builds an unofficial proof-of-concept AWX container image for
-local testing and CI experimentation.
+This repository builds an unofficial AWX container image for local testing and
+CI experimentation.
 
 It is not affiliated with, endorsed by, or supported by Red Hat, Ansible, or the
-AWX project. It is not intended for production use.
+AWX project. It is not intended for production use. For normal AWX installation
+and lifecycle management, use the AWX Operator.
 
-For normal AWX installation and lifecycle management, use the AWX Operator.
+## What This Is
 
-## Tools Used
+This is a thin image builder. The Dockerfile clones upstream AWX during the
+image build, assembles the runtime files, and keeps source and license metadata
+inside the image.
 
-- Dagger: primary command surface for local checks, image builds, verification,
-  and CI workflows.
-- Docker/BuildKit: builds the multi-stage AWX image and enables build features
-  such as SSH mounts for private dependency access.
-- Python: implements rule checks, evidence generation, upstream-health
-  evaluation, and production lock handling.
-- Make: optional local aliases for common Dagger commands.
+Dagger is the main command surface. Make is only a small convenience layer for
+common local commands.
 
-## Basic Use
+## Requirements
 
-We utilize Dagger for building and testing the image. Install Dagger from https://dagger.io.
+- Docker or another BuildKit-capable container builder
+- Dagger
+- Python and uv for local tests outside Dagger
+
+## Build And Verify
 
 ```bash
-# Run the fast project checks.
+# Run formatting, lint, shell, workflow, and unit checks.
 dagger call check --source=.
 
-# Check whether the selected upstream AWX ref is healthy enough to use.
-dagger call upstream-health --source=. --upstream-repository=https://github.com/ansible/awx.git --upstream-ref=devel --provider=auto
+# Resolve an AWX branch, tag, or commit to a concrete SHA.
+dagger call resolve-ref --source=. --upstream-ref=devel
 
-# Resolve, build, verify, and write image evidence.
-dagger call image-pipeline --source=. --upstream-ref=devel export --path=build/evidence
+# Build the image.
+dagger call build --source=. --upstream-ref=devel
 
-# Build, verify, gate, publish, and write publication evidence.
-dagger call image-publish --source=. --upstream-ref=devel --image-ref=ghcr.io/example/awx-devel:development export --path=build/evidence
-
-# Scan the repository for public-readiness issues.
-dagger call public-readiness --source=. export --path=build/evidence
-
-# Run the gate required before public repository or image publication.
-dagger call publication-gate --source=. export --path=build/evidence
+# Build the image and run the runtime contract check.
+dagger call verify --source=. --upstream-ref=devel export --path=build/evidence
 
 # Export a verified image as an OCI tarball.
-dagger call image-export --source=. --upstream-ref=devel --image-ref=awx-devel:development export --path=build/out/awx-devel.tar
-
-# Verify a candidate and write an updated production lock.
-dagger call promote-candidate --source=. --upstream-ref=devel
-
-# Validate a production branch change before merge.
-dagger call production-admission --source=. export --path=build/evidence
-
-# Build, verify, gate, and publish the locked production image.
-dagger call production-publish --source=. export --path=build/evidence
+dagger call export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
 ```
 
-## Optional Make aliases
-
-The [Makefile](Makefile) is only a convenience layer. Dagger remains the
-canonical command surface for build, test, verification, and publication
-workflows.
+Optional Make aliases:
 
 ```bash
 make check
-make strict-check
+make lint
+make format
+make test
+make build
+make verify
+make export
 make clean
 make distclean
-make build
-make upstream-health
-make public-readiness
-make publication-gate
-make production-admission
-make production-publish
 ```
 
 ## Defaults
 
-Example defaults for the build:
-
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
 - Upstream AWX ref: `devel`
-- Upstream health provider: `auto`
-- Development image tag: `awx-devel:development`
-- Production image tags: `awx-devel:production`, `awx-devel:latest`
+- Receptor image: `quay.io/ansible/receptor:devel`
+- Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 
-The build clones upstream AWX during the Docker image build. This repository
-does not store a copy of the AWX source tree.
+Useful environment variables for Make aliases:
 
-## Branch Model
+- `UPSTREAM_REF`: AWX branch, tag, or commit to build
+- `IMAGE_NAME`: local image name used by `make build` and `make verify`
+- `IMAGE_TAG`: local image tag used by `make build` and `make verify`
+- `IMAGE_REF`: image reference used by `make export`
+- `OUTPUT`: tarball path used by `make export`
 
-`development` follows moving upstream AWX refs for integration and testing.
+## Runtime Check
 
-`production` builds only from `awx.lock.yml` pinned revisions and accepts
-changes through protected pull requests.
-
-Production-style builds use `awx.lock.yml`. That file pins the exact upstream
-AWX revision; production commands build from the pinned SHA instead of the
-floating branch name.
+`verify` runs `docker/awx/bin/verify-runtime-contract` inside the built image.
+That check confirms the copied AWX source, wrapper entrypoint, supervisor
+configuration, `awx-manage`, source revision files, and license files are
+present.
 
 ## Notices
 

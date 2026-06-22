@@ -1,15 +1,12 @@
 # Tests
 
-This directory contains the project test suite.
+This directory contains fast tests for the AWX image builder wrapper.
 
-The tests focus on the wrapper behavior that must stay stable around Dagger
-commands, rule decisions, evidence formats, workflow contracts, and production
-lock handling. They are meant to catch regressions in repository behavior
-without requiring a live AWX checkout or a running image build for every check.
+The tests focus on behavior that should stay stable without building the full
+image on every run: AWX ref resolution, small metadata writers, Make aliases,
+and a few Dockerfile invariants.
 
 ## Layout
 
-- `unit/`: fast tests for Python helpers, CLI behavior, rule logic, schemas,
-  workflow definitions, and Make aliases.
-- `fixtures/`: test data files. They give tests fixed examples to read, such as
-  mocked GitHub responses, instead of calling external services.
+- `unit/`: fast Python tests for wrapper helpers and local command aliases.
+- `fixtures/`: fixed example inputs for tests that need sample files.

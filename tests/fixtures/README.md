@@ -1,11 +1,6 @@
 # Test Data Fixtures
 
-This directory stores test data used by the test suite.
+This directory is reserved for fixed test inputs.
 
-The directory is named `fixtures` because that is the common testing name for
-fixed example inputs. In this project, these files let tests check success,
-failure, pending, and missing-signal cases without calling GitHub during the
-test run.
-
-The `github/` fixtures model the GitHub status and checks API responses consumed
-by upstream-health rule tests.
+Fixtures are useful when a test needs a stable file instead of calling an
+external service or building an image.

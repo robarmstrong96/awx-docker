@@ -15,9 +15,26 @@ def dry_run(target: str) -> str:
     return result.stdout.strip()
 
 
-def test_make_check_is_dagger_alias() -> None:
+def test_make_check_lint_format_and_test_are_dagger_aliases() -> None:
     assert dry_run("check") == "dagger call check --source=."
-    assert dry_run("strict-check") == "dagger call strict-check --source=."
+    assert dry_run("lint") == "dagger call lint --source=."
+    assert dry_run("format") == "dagger call format --source=."
+    assert dry_run("test") == "dagger call test --source=."
+
+
+def test_make_image_targets_are_dagger_aliases() -> None:
+    build = dry_run("build")
+    verify = dry_run("verify")
+    export = dry_run("export")
+
+    assert "dagger call build --source=." in build
+    assert "--upstream-ref=" in build
+    assert "--image-name=" in build
+    assert "--image-tag=" in build
+    assert "dagger call verify --source=." in verify
+    assert "export --path=build/evidence" in verify
+    assert "dagger call export --source=." in export
+    assert "--image-ref=" in export
 
 
 def test_make_clean_removes_generated_artifacts() -> None:
@@ -36,60 +53,10 @@ def test_make_distclean_removes_virtualenv_after_clean() -> None:
     assert "rm -rf .venv" in distclean
 
 
-def test_make_upstream_health_is_dagger_alias() -> None:
-    expected = (
-        'dagger call upstream-health --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
-        '--provider="${UPSTREAM_PROVIDER:-auto}"'
-    )
-
-    assert dry_run("upstream-health") == expected
-
-
-def test_make_image_targets_are_dagger_aliases() -> None:
-    build = dry_run("build")
-
-    assert "dagger call image-pipeline --source=." in build
-    assert "--upstream-ref=" in build
-    assert "--provider=" in build
-    assert "--image-name=" in build
-    assert "--image-tag=" in build
-
-
-def test_make_publication_targets_are_dagger_aliases() -> None:
-    assert dry_run("public-readiness") == "dagger call public-readiness --source=."
-    expected = (
-        'dagger call publication-gate --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
-        '--provider="${UPSTREAM_PROVIDER:-auto}"'
-    )
-
-    assert dry_run("publication-gate") == expected
-
-
-def test_make_production_targets_are_dagger_aliases() -> None:
-    assert dry_run("promote-candidate") == (
-        'dagger call promote-candidate --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '
-        '--provider="${UPSTREAM_PROVIDER:-auto}" '
-        '--image-name="${IMAGE_NAME:-awx-devel}" --image-tag="${IMAGE_TAG:-devel}"'
-    )
-    assert dry_run("production-admission") == (
-        'dagger call production-admission --source=. --provider="${UPSTREAM_PROVIDER:-auto}"'
-    )
-    assert dry_run("production-pipeline") == (
-        'dagger call production-pipeline --source=. --provider="${UPSTREAM_PROVIDER:-auto}"'
-    )
-    assert dry_run("production-publish") == (
-        'dagger call production-publish --source=. --provider="${UPSTREAM_PROVIDER:-auto}" '
-        '--registry-username="${REGISTRY_USERNAME:-}" --registry-token=env://REGISTRY_TOKEN'
-    )
-
-
-def test_make_aliases_do_not_reference_deleted_wrappers() -> None:
+def test_makefile_does_not_expose_publication_or_production_targets() -> None:
     makefile = (ROOT / "Makefile").read_text()
 
-    assert "scripts/image.sh" not in makefile
-    assert "scripts/check-upstream-status.sh" not in makefile
-    assert "scripts/check-public-readiness.sh" not in makefile
-    assert "verify-image" not in makefile
-    assert "\nevidence:" not in makefile
-    assert "--awx-ref" not in makefile
-    assert "--awx-repo" not in makefile
+    assert "public-readiness" not in makefile
+    assert "publication-gate" not in makefile
+    assert "production" not in makefile
+    assert "image-publish" not in makefile

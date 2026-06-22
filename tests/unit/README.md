@@ -1,7 +1,6 @@
 # Unit Tests
 
-This directory contains unit tests for the project.
+This directory contains fast unit tests for the wrapper code.
 
-Unit tests check small pieces of behavior without building an image. They cover
-rule decisions, evidence files, production lock checks, CLI wiring, workflow
-expectations, Make aliases, and schema validation.
+These tests avoid full image builds. They cover small Python helpers, generated
+metadata files, Dockerfile conventions that affect builds, and Make aliases.
