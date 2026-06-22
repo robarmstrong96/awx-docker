@@ -20,6 +20,22 @@ def test_make_check_is_dagger_alias() -> None:
     assert dry_run("strict-check") == "dagger call strict-check --source=."
 
 
+def test_make_clean_removes_generated_artifacts() -> None:
+    clean = dry_run("clean")
+
+    assert "rm -rf build .pytest_cache .ruff_cache" in clean
+    assert "-name __pycache__" in clean
+    assert ".venv" in clean
+    assert "rm -rf .venv" not in clean
+
+
+def test_make_distclean_removes_virtualenv_after_clean() -> None:
+    distclean = dry_run("distclean")
+
+    assert "rm -rf build .pytest_cache .ruff_cache" in distclean
+    assert "rm -rf .venv" in distclean
+
+
 def test_make_upstream_health_is_dagger_alias() -> None:
     expected = (
         'dagger call upstream-health --source=. --upstream-ref="${UPSTREAM_REF:-devel}" '

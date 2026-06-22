@@ -63,6 +63,8 @@ workflows.
 ```bash
 make check
 make strict-check
+make clean
+make distclean
 make build
 make upstream-health
 make public-readiness

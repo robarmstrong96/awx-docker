@@ -1,4 +1,4 @@
-.PHONY: check strict-check format lint test upstream-health build public-readiness publication-gate promote-candidate production-admission production-pipeline production-publish help
+.PHONY: check strict-check format lint test clean distclean upstream-health build public-readiness publication-gate promote-candidate production-admission production-pipeline production-publish help
 
 help:
 	@dagger functions
@@ -17,6 +17,13 @@ lint:
 
 test:
 	@dagger call test --source=.
+
+clean:
+	@rm -rf build .pytest_cache .ruff_cache
+	@find . \( -path ./.git -o -path ./.venv -o -path ./build \) -prune -o -type d -name __pycache__ -exec rm -rf {} +
+
+distclean: clean
+	@rm -rf .venv
 
 upstream-health:
 	@dagger call upstream-health --source=. --upstream-ref="$${UPSTREAM_REF:-devel}" --provider="$${UPSTREAM_PROVIDER:-auto}"
