@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
-# Uses the BuildKit Dockerfile frontend for RUN --mount=type=ssh.
+# Pin the Dockerfile frontend because this build uses BuildKit RUN mounts.
 
 # ----- Build arguments --------------------------------------------------------
 
+ARG CENTOS_STREAM_IMAGE=quay.io/centos/centos:stream9
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel
 ARG AWX_REQUESTED_REF=devel
@@ -15,7 +16,7 @@ FROM ${RECEPTOR_IMAGE} AS receptor
 
 # ----- AWX source checkout ----------------------------------------------------
 
-FROM quay.io/centos/centos:stream9 AS awx-source
+FROM ${CENTOS_STREAM_IMAGE} AS awx-source
 ARG AWX_REPO
 ARG AWX_REF
 ARG AWX_REQUESTED_REF
@@ -29,7 +30,7 @@ RUN /usr/local/libexec/awx-docker/prepare-awx-source
 
 # ----- UI assets --------------------------------------------------------------
 
-FROM quay.io/centos/centos:stream9 AS ui-builder
+FROM ${CENTOS_STREAM_IMAGE} AS ui-builder
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
@@ -43,7 +44,7 @@ RUN make ui
 
 # ----- Python dependency build ------------------------------------------------
 
-FROM quay.io/centos/centos:stream9 AS builder
+FROM ${CENTOS_STREAM_IMAGE} AS builder
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
@@ -60,6 +61,8 @@ RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 ARG VERSION
 ARG SETUPTOOLS_SCM_PRETEND_VERSION
 
+# Copy only dependency-resolution inputs so source changes do not invalidate the
+# Python dependency layer unless requirements or Makefile behavior changes.
 # AWX's Makefile owns requirement installation; keep build tools out of the
 # final image while preserving the generated virtualenv.
 COPY --from=awx-source /awx-src/Makefile /tmp/Makefile
@@ -74,7 +77,7 @@ RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
 
 # ----- Final runtime image ----------------------------------------------------
 
-FROM quay.io/centos/centos:stream9
+FROM ${CENTOS_STREAM_IMAGE}
 
 ARG AWX_REPO
 ARG AWX_REF
@@ -92,25 +95,24 @@ ENV PATH="/var/lib/awx/venv/awx/bin/:${PATH}"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AWX="0.0.dev0+g${AWX_SOURCE_REVISION}"
 
-LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image"
-LABEL org.opencontainers.image.description="AWX POC image built by cloning upstream AWX"
-LABEL org.opencontainers.image.source="https://github.com/ansible/awx"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.vendor="unofficial"
-LABEL dev.awx-wrapper.awx.repo="${AWX_REPO}"
-LABEL dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}"
-LABEL dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}"
+LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
+      org.opencontainers.image.description="AWX POC image built by cloning upstream AWX" \
+      org.opencontainers.image.source="https://github.com/ansible/awx" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.vendor="unofficial" \
+      dev.awx-wrapper.awx.repo="${AWX_REPO}" \
+      dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}" \
+      dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}"
 
 USER root
 
 # ----- Runtime OS packages ----------------------------------------------------
 
-ADD https://copr.fedorainfracloud.org/coprs/ansible/Rsyslog/repo/epel-9/ansible-Rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
-
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/synthesize-awx-dist-info /usr/local/libexec/awx-docker/synthesize-awx-dist-info
 COPY docker/awx/bin/prepare-runtime-layout /usr/local/libexec/awx-docker/prepare-runtime-layout
 COPY docker/awx/bin/verify-runtime-contract /usr/local/libexec/awx-docker/verify-runtime-contract
+COPY docker/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
@@ -125,26 +127,37 @@ RUN if [ "$INSTALL_PYTHON_DEBUGINFO" = "true" ]; then \
     fi
 RUN rm -rf /root/.cache && rm -rf /tmp/*
 
-# ----- AWX source and launcher files -----------------------------------------
+# ----- AWX runtime artifacts --------------------------------------------------
+
+COPY --from=builder /var/lib/awx /var/lib/awx
+COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
+
+# ----- AWX development source -------------------------------------------------
 
 # Upstream AWX development launcher scripts expect a mounted checkout. This
 # wrapper bakes the cloned source into the image, then removes Git metadata.
-COPY --from=builder /var/lib/awx /var/lib/awx
 COPY --from=ui-builder /tmp/src /awx_devel
-COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 RUN rm -rf /awx_devel/.git
+
+# ----- License and source metadata -------------------------------------------
 
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
     cp /awx_devel/LICENSE.md /usr/share/licenses/awx-wrapper/AWX-LICENSE.md && \
     cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION && \
     cp /awx_devel/.awx_requested_ref /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 
+# ----- Runtime executable links ----------------------------------------------
+
 RUN ln -s /var/lib/awx/venv/awx/bin/awx-manage /usr/bin/awx-manage
+
+# ----- TLS development certificate -------------------------------------------
 
 RUN openssl req -nodes -newkey rsa:2048 -keyout /etc/nginx/nginx.key -out /etc/nginx/nginx.csr \
         -subj "/C=US/ST=North Carolina/L=Durham/O=Ansible/OU=AWX Development/CN=awx.localhost" && \
     openssl x509 -req -days 365 -in /etc/nginx/nginx.csr -signkey /etc/nginx/nginx.key -out /etc/nginx/nginx.crt && \
     chmod 640 /etc/nginx/nginx.csr /etc/nginx/nginx.key /etc/nginx/nginx.crt
+
+# ----- Container runtime configuration ---------------------------------------
 
 RUN rpm --restore shadow-utils 2>/dev/null || :
 RUN sed -i -e 's|^#mount_program|mount_program|g' -e '/additionalimage.*/a "/var/lib/shared",' -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' /etc/containers/storage.conf
@@ -154,6 +167,8 @@ RUN mkdir -p /etc/containers/registries.conf.d/ && \
     chmod 644 /etc/containers/registries.conf.d/force-fully-qualified-images.conf
 
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/rsyslog.conf /var/lib/awx/rsyslog/rsyslog.conf
+
+# ----- AWX launcher and supervisor files --------------------------------------
 
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/wait-for-migrations /usr/local/bin/wait-for-migrations
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/stop-supervisor /usr/local/bin/stop-supervisor
