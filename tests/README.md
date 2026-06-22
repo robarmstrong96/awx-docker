@@ -9,4 +9,3 @@ aliases.
 ## Layout
 
 - `unit/`: fast Python tests for wrapper helpers and local command aliases.
-- `fixtures/`: fixed example inputs for tests that need sample files.
