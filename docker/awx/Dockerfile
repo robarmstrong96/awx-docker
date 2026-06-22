@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1.7
+# Uses the BuildKit Dockerfile frontend for RUN --mount=type=ssh.
 
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel
