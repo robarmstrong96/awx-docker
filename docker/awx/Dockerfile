@@ -7,8 +7,10 @@ ARG AWX_REQUESTED_REF=devel
 ARG AWX_SOURCE_REVISION=unknown
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
 
+# Reuse the upstream Receptor binary expected by AWX.
 FROM ${RECEPTOR_IMAGE} AS receptor
 
+# Clone the requested AWX revision and record source metadata for the final image.
 FROM quay.io/centos/centos:stream9 AS awx-source
 ARG AWX_REPO
 ARG AWX_REF
@@ -20,6 +22,7 @@ COPY docker/awx/packages/source.rpms /tmp/packages.rpms
 RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 RUN /usr/local/libexec/awx-docker/prepare-awx-source
 
+# Build AWX UI assets from the cloned source.
 FROM quay.io/centos/centos:stream9 AS ui-builder
 
 USER root
@@ -32,6 +35,8 @@ COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
 RUN make ui
 
+# Install AWX Python dependencies into /var/lib/awx for the runtime image.
+# CentOS Stream 9 keeps the build environment aligned with the final runtime.
 FROM quay.io/centos/centos:stream9 AS builder
 
 ENV LANG=en_US.UTF-8
@@ -49,6 +54,8 @@ RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 ARG VERSION
 ARG SETUPTOOLS_SCM_PRETEND_VERSION
 
+# AWX's Makefile owns Python requirement installation; this stage keeps build
+# tools out of the final image while preserving the generated virtualenv.
 COPY --from=awx-source /awx-src/Makefile /tmp/Makefile
 RUN mkdir /tmp/requirements
 COPY --from=awx-source /awx-src/requirements/requirements.txt /tmp/requirements/requirements.txt
@@ -59,6 +66,8 @@ COPY --from=awx-source /awx-src/requirements/requirements_dev.txt /tmp/requireme
 WORKDIR /tmp
 RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
 
+# Final runtime image. It keeps AWX's RHEL-family package assumptions while
+# baking the cloned source and generated dependencies into one container.
 FROM quay.io/centos/centos:stream9
 
 ARG AWX_REPO
@@ -88,6 +97,7 @@ LABEL dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}"
 
 USER root
 
+# Rsyslog is a runtime service used by AWX's launcher scripts.
 ADD https://copr.fedorainfracloud.org/coprs/ansible/Rsyslog/repo/epel-9/ansible-Rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
@@ -98,6 +108,7 @@ COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 
+# These tools are imported or executed by AWX's runtime launcher and supervisor.
 RUN pip3.12 install -vv --no-cache-dir virtualenv supervisor dumb-init build
 RUN pip3.12 install -vv --no-cache-dir git+https://github.com/coderanger/supervisor-stdout.git@973ba19967cdaf46d9c1634d1675fc65b9574f6e
 RUN pip3.12 install -vv --no-cache-dir black setuptools-scm
@@ -114,11 +125,13 @@ COPY --from=ui-builder /tmp/src /awx_devel
 COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 RUN rm -rf /awx_devel/.git
 
+# Preserve upstream license and revision evidence inside the image.
 RUN mkdir -p /usr/share/licenses/awx-wrapper && \
     cp /awx_devel/LICENSE.md /usr/share/licenses/awx-wrapper/AWX-LICENSE.md && \
     cp /awx_devel/.awx_source_revision /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION && \
     cp /awx_devel/.awx_requested_ref /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 
+# Expose AWX's Django management command on the standard executable path.
 RUN ln -s /var/lib/awx/venv/awx/bin/awx-manage /usr/bin/awx-manage
 
 RUN openssl req -nodes -newkey rsa:2048 -keyout /etc/nginx/nginx.key -out /etc/nginx/nginx.csr \
@@ -134,6 +147,8 @@ RUN mkdir -p /etc/containers/registries.conf.d/ && \
     chmod 644 /etc/containers/registries.conf.d/force-fully-qualified-images.conf
 
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/rsyslog.conf /var/lib/awx/rsyslog/rsyslog.conf
+
+# AWX development launcher scripts expect these upstream helper files in place.
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/wait-for-migrations /usr/local/bin/wait-for-migrations
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/stop-supervisor /usr/local/bin/stop-supervisor
 COPY --from=awx-source /awx-src/tools/ansible/roles/dockerfile/files/uwsgi.ini /etc/tower/uwsgi.ini
@@ -155,6 +170,8 @@ RUN /usr/local/libexec/awx-docker/prepare-runtime-layout
 
 WORKDIR /awx_devel
 
+# 8043/8013 are nginx listeners for AWX HTTPS and websocket traffic. 8080/22
+# remain exposed for compatibility with upstream AWX development tooling.
 EXPOSE 8043 8013 8080 22
 
 ENTRYPOINT ["/usr/local/bin/awx-wrapper-entrypoint"]
