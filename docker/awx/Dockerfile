@@ -127,9 +127,8 @@ RUN rm -rf /root/.cache && rm -rf /tmp/*
 
 # ----- AWX source and launcher files -----------------------------------------
 
-# Upstream Dockerfile.dev expects a mounted AWX checkout. This wrapper clones
-# AWX during build and bakes that source into the standalone proof-of-concept
-# image, then removes upstream Git metadata from the final layer.
+# Upstream AWX development launcher scripts expect a mounted checkout. This
+# wrapper bakes the cloned source into the image, then removes Git metadata.
 COPY --from=builder /var/lib/awx /var/lib/awx
 COPY --from=ui-builder /tmp/src /awx_devel
 COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
