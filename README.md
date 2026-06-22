@@ -39,18 +39,13 @@ dagger call verify --source=. --upstream-ref=devel export --path=build/evidence
 
 # Export a verified image as an OCI tarball.
 dagger call export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+```
 
 ## Publish image with CI/CD
 
-Workflow dispatch jobs can build and publish verified images.
-
-```bash
-make export IMAGE_REF=ghcr.io/<owner>/<repo>:<tag> # local path artifact in build/out/awx-devel.tar
-```
-
-The `Publish` workflow publishes to `ghcr.io` by default when `image_ref` is not
-set, using `<owner>/<repo>:<tag>`.
-```
+The `Publish` workflow builds, verifies, and pushes an image from GitHub
+Actions. It publishes to `ghcr.io/<owner>/<repo>:<tag>` by default when
+`image_ref` is not set.
 
 Optional Make aliases:
 

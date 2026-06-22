@@ -52,7 +52,7 @@ jobs:
             --source=.
             --upstream-ref=${{ inputs.upstream_ref }}
             --image-ref=${{ steps.image.outputs.ref }}
-            --path=build/out/awx-devel.tar
+            export --path=build/out/awx-devel.tar
 
       - name: Publish image
         run: |
