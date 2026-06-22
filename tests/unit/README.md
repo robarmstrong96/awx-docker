@@ -1,8 +1,7 @@
 # Unit Tests
 
-This directory contains fast unit tests for repository behavior.
+This directory contains unit tests for the project.
 
-The tests cover policy classification, evidence schemas, production lock
-validation, CLI wiring, workflow expectations, Make aliases, and other local
-contracts. They should stay lightweight and deterministic so they can run in
-local development and CI before slower image or Dagger workflows.
+Unit tests check small pieces of behavior without building an image. They cover
+rule decisions, evidence files, production lock checks, CLI wiring, workflow
+expectations, Make aliases, and schema validation.

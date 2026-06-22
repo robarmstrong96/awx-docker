@@ -120,8 +120,8 @@ def test_promote_candidate_writes_valid_lock_and_evidence(monkeypatch, tmp_path:
 def test_production_admission_fails_when_lockfile_is_missing(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(cli, "root_dir", lambda: tmp_path)
     (tmp_path / "README.md").write_text("ok\n")
-    (tmp_path / "policies").mkdir()
-    (tmp_path / "policies/public-readiness.yml").write_text(
+    (tmp_path / "rules").mkdir()
+    (tmp_path / "rules/public-readiness.yml").write_text(
         yaml.safe_dump(
             {
                 "schema": "awx-docker.public-readiness/v1",
@@ -130,7 +130,7 @@ def test_production_admission_fails_when_lockfile_is_missing(monkeypatch, tmp_pa
             }
         )
     )
-    (tmp_path / "policies/branches.yml").write_text(
+    (tmp_path / "rules/branches.yml").write_text(
         yaml.safe_dump(
             {
                 "schema": "awx-docker.branch-policy/v1",

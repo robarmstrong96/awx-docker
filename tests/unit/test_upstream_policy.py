@@ -8,7 +8,7 @@ from awx_docker.upstream.report import build_report, write_upstream_health
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/fixtures/github"
-POLICY = load_policy(ROOT / "policies/upstream-health.yml")
+POLICY = load_policy(ROOT / "rules/upstream-health.yml")
 
 
 def load_fixture(name: str) -> tuple[dict, dict]:
@@ -171,7 +171,7 @@ def test_unresolvable_ref_writes_unknown_evidence(monkeypatch, tmp_path: Path) -
         "https://github.com/ansible/awx.git",
         "missing",
         tmp_path,
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "scheduled-build",
     )
 
@@ -202,7 +202,7 @@ def test_generic_git_provider_warns_without_ci_signal(monkeypatch, tmp_path: Pat
         "https://git.example.test/awx.git",
         "devel",
         tmp_path,
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "scheduled-build",
         provider="generic-git",
     )
@@ -224,7 +224,7 @@ def test_generic_git_provider_fails_publication_without_ci_signal(
         "https://git.example.test/awx.git",
         "devel",
         tmp_path,
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "publication",
         provider="generic-git",
     )
@@ -245,7 +245,7 @@ def test_generic_git_provider_verifies_supplied_revision_for_publication(
         "https://git.example.test/awx.git",
         "devel",
         tmp_path,
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "publication",
         provider="generic-git",
         resolved_revision="b" * 40,
@@ -267,7 +267,7 @@ def test_generic_git_provider_fails_unreachable_supplied_revision_for_publicatio
         "https://git.example.test/awx.git",
         "devel",
         tmp_path,
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "publication",
         provider="generic-git",
         resolved_revision="b" * 40,
@@ -305,7 +305,7 @@ def test_file_provider_reads_normalized_signals(tmp_path: Path) -> None:
         "https://git.example.test/awx.git",
         "devel",
         tmp_path / "evidence",
-        ROOT / "policies/upstream-health.yml",
+        ROOT / "rules/upstream-health.yml",
         "scheduled-build",
         provider="file",
         signal_file=signal_file,

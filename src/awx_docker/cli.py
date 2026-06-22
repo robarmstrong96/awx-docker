@@ -135,7 +135,7 @@ def cmd_upstream_health(args: argparse.Namespace) -> int:
         args.upstream_repository,
         args.upstream_ref,
         evidence_dir(args.evidence_dir),
-        root_dir() / "policies/upstream-health.yml",
+        root_dir() / "rules/upstream-health.yml",
         args.mode,
         os.environ.get("GITHUB_TOKEN"),
         args.provider,
@@ -149,7 +149,7 @@ def cmd_upstream_health(args: argparse.Namespace) -> int:
 def cmd_public_readiness(args: argparse.Namespace) -> int:
     report = scan_public_readiness(
         root_dir(),
-        root_dir() / "policies/public-readiness.yml",
+        root_dir() / "rules/public-readiness.yml",
         evidence_dir(args.evidence_dir),
     )
     print(f"public-readiness: {report.status}")
@@ -165,18 +165,18 @@ def run_publication_gate(
     evidence: Path,
     purpose: str = "repository",
 ) -> SimpleNamespace:
-    policy = yaml.safe_load((root_dir() / "policies/image-publication.yml").read_text())
+    policy = yaml.safe_load((root_dir() / "rules/image-publication.yml").read_text())
     required_checks = required_publication_checks(policy, purpose)
     readiness = scan_public_readiness(
         root_dir(),
-        root_dir() / "policies/public-readiness.yml",
+        root_dir() / "rules/public-readiness.yml",
         evidence,
     )
     upstream = write_upstream_health(
         upstream_repository,
         upstream_ref,
         evidence,
-        root_dir() / "policies/upstream-health.yml",
+        root_dir() / "rules/upstream-health.yml",
         "publication",
         os.environ.get("GITHUB_TOKEN"),
         provider,
@@ -246,7 +246,7 @@ def cmd_publication_gate(args: argparse.Namespace) -> int:
                 require_promotion_evidence=purpose.startswith("production"),
             )
         if lock_errors:
-            policy = yaml.safe_load((root_dir() / "policies/image-publication.yml").read_text())
+            policy = yaml.safe_load((root_dir() / "rules/image-publication.yml").read_text())
             required_checks = required_publication_checks(policy, purpose)
             reason = "; ".join(lock_errors)
             write_publication_gate_report(
@@ -403,12 +403,12 @@ def cmd_production_admission(args: argparse.Namespace) -> int:
     else:
         lock_errors = ["awx.lock.yml is missing"]
 
-    policy = yaml.safe_load((root_dir() / "policies/branches.yml").read_text())
+    policy = yaml.safe_load((root_dir() / "rules/branches.yml").read_text())
     branch_errors = branch_policy_errors(policy, "production", lock_present)
     if lock is None or lock_errors:
         readiness = scan_public_readiness(
             root_dir(),
-            root_dir() / "policies/public-readiness.yml",
+            root_dir() / "rules/public-readiness.yml",
             evidence,
         )
         gate = SimpleNamespace(

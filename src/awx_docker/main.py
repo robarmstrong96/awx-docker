@@ -37,9 +37,9 @@ class AwxDocker:
         return await self._code_quality_container(source).stdout()
 
     @function
-    async def policy_tests(self, source: dagger.Directory) -> str:
-        """Run unit tests for policy and report behavior."""
-        return await self._policy_test_container(source).stdout()
+    async def rule_tests(self, source: dagger.Directory) -> str:
+        """Run unit tests for rule and report behavior."""
+        return await self._rule_test_container(source).stdout()
 
     @function
     async def format(self, source: dagger.Directory) -> str:
@@ -603,7 +603,7 @@ class AwxDocker:
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
         return ctr.with_exec(["actionlint"])
 
-    def _policy_test_container(self, source: dagger.Directory) -> dagger.Container:
+    def _rule_test_container(self, source: dagger.Directory) -> dagger.Container:
         return self._python(source).with_exec(["uv", "run", "pytest", "tests/unit"])
 
     def _with_strict_tools(self, ctr: dagger.Container) -> dagger.Container:

@@ -27,6 +27,8 @@ def test_workflow_and_job_names_are_presentable() -> None:
     assert workflow("production-pipeline.yml")["name"] == "Production Pipeline"
     assert workflow("publication-gate.yml")["name"] == "Publication Gate"
 
+    project_jobs = workflow("project-checks.yml")["jobs"]
+    assert project_jobs["rule-tests"]["name"] == "Rule tests"
     admission_jobs = workflow("production-admission.yml")["jobs"]
     assert admission_jobs["validate-production-lock"]["name"] == "Validate production lock"
     assert admission_jobs["publication-gate"]["name"] == "Publication gate"

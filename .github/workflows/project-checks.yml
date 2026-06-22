@@ -23,8 +23,8 @@ jobs:
           verb: call
           args: code-quality --source=.
 
-  policy-tests:
-    name: Policy tests
+  rule-tests:
+    name: Rule tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +33,7 @@ jobs:
         with:
           version: "v0.21.4"
           verb: call
-          args: policy-tests --source=.
+          args: rule-tests --source=.
 
   public-readiness:
     name: Public readiness

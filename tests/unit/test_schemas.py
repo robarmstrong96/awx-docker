@@ -58,7 +58,7 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
 
     readiness = scan_public_readiness(
         ROOT,
-        ROOT / "policies/public-readiness.yml",
+        ROOT / "rules/public-readiness.yml",
         evidence,
     )
     validate(readiness.to_dict(), schema("public-readiness"))
@@ -71,7 +71,7 @@ def test_generated_reports_match_schemas(tmp_path: Path) -> None:
         "b" * 40,
         combined,
         checks,
-        load_policy(ROOT / "policies/upstream-health.yml"),
+        load_policy(ROOT / "rules/upstream-health.yml"),
         "scheduled-build",
     )
     validate(upstream.to_dict(), schema("upstream-health-report"))
@@ -179,7 +179,7 @@ def test_upstream_health_schema_requires_nested_contract() -> None:
         "b" * 40,
         combined,
         checks,
-        load_policy(ROOT / "policies/upstream-health.yml"),
+        load_policy(ROOT / "rules/upstream-health.yml"),
         "scheduled-build",
     ).to_dict()
     del report["signals"]["ci"]["blocking_failures"]
