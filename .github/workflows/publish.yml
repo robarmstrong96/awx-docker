@@ -56,5 +56,10 @@ jobs:
 
       - name: Publish image
         run: |
-          docker load -i build/out/awx-devel.tar
+          load_output="$(docker load -i build/out/awx-devel.tar)"
+          echo "$load_output"
+          loaded_image_id="$(printf '%s\n' "$load_output" | sed -n 's/^Loaded image ID: //p' | tail -n 1)"
+          if [ -n "$loaded_image_id" ]; then
+            docker tag "$loaded_image_id" "${{ steps.image.outputs.ref }}"
+          fi
           docker push "${{ steps.image.outputs.ref }}"
