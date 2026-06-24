@@ -41,6 +41,21 @@ dagger call verify --source=. --upstream-ref=devel export --path=build/evidence
 dagger call export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
 ```
 
+## Example Compose Smoke Test
+
+`compose.example.yaml` starts this image with local Postgres and Redis
+containers. It is intended for a quick smoke test of a published or locally
+built image, not as a supported production deployment.
+
+```bash
+cp .env.example .env
+# Edit .env and replace every change-me value before starting the stack.
+docker compose --env-file .env -f compose.example.yaml up -d
+```
+
+The example defaults to `ghcr.io/robarmstrong96/awx-docker:production`. To test a
+local export or another registry tag, set `AWX_IMAGE` in `.env`.
+
 ## Publish image with CI/CD
 
 The `Publish` workflow builds, verifies, and pushes an image from GitHub
