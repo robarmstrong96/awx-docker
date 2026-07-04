@@ -122,7 +122,23 @@ PY
 	touch /etc/receptor/receptor.conf.lock
 }
 
+reset_podman_run_state() {
+	local dir removed=0
+
+	for dir in /run/containers/storage /run/libpod; do
+		if [[ -e "$dir" ]]; then
+			rm -rf -- "$dir"
+			removed=1
+		fi
+	done
+
+	if [[ "$removed" -eq 1 ]]; then
+		printf 'cleared stale Podman runtime state under /run\n' >&2
+	fi
+}
+
 write_dynamic_users
+reset_podman_run_state
 podman system migrate
 export SDB_NOTIFY_HOST
 SDB_NOTIFY_HOST="$(ip route | awk 'NR == 1 { print $3 }')"
