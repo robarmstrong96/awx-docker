@@ -25,11 +25,15 @@ def test_just_lint_recipe_runs_dagger_lint() -> None:
     assert recipe_body("lint") == "dagger call lint --source=."
 
 
-def test_just_build_recipe_runs_dagger_build_with_ui_pin() -> None:
-    build = recipe_body("build")
+def test_just_build_recipe_delegates_to_dagger_defaults() -> None:
+    assert recipe_body("build") == "dagger call build --source=."
 
-    assert "dagger call build --source=." in build
-    assert "--upstream-ref=" in build
-    assert "--awx-ui-ref=" in build
-    assert "--image-name=" in build
-    assert "--image-tag=" in build
+
+def test_just_verify_recipe_exports_default_evidence_path() -> None:
+    assert recipe_body("verify") == "dagger call verify --source=. export --path=build/evidence"
+
+
+def test_just_export_recipe_exports_default_tarball_path() -> None:
+    assert recipe_body("export") == (
+        "dagger call export --source=. export --path=build/out/awx-devel.tar"
+    )

@@ -98,7 +98,8 @@ The `Publish` workflow builds, verifies, and pushes an image from GitHub
 Actions. It publishes to `ghcr.io/<owner>/<repo>:<tag>` by default when
 `image_ref` is not set.
 
-Optional Just recipes:
+Optional Just recipes provide short aliases for the default Dagger calls and
+local cleanup:
 
 ```bash
 just check
@@ -112,6 +113,13 @@ just clean
 just distclean
 ```
 
+Use Dagger directly when overriding build inputs:
+
+```bash
+dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
+dagger call export --source=. --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+```
+
 ## Defaults
 
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
@@ -121,16 +129,6 @@ just distclean
 - Receptor image: `quay.io/ansible/receptor:devel`
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
-
-Useful environment variables for Just recipes:
-
-- `UPSTREAM_REF`: AWX branch, tag, or commit to build
-- `AWX_UI_REF`: ansible-ui tag or commit to build
-- `AWX_UI_REPO`: ansible-ui repository to fetch UI source from
-- `IMAGE_NAME`: local image name used by `just build` and `just verify`
-- `IMAGE_TAG`: local image tag used by `just build` and `just verify`
-- `IMAGE_REF`: image reference used by `just export`
-- `OUTPUT`: tarball path used by `just export`
 
 ## Runtime Check
 
