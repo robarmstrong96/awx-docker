@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+healthcheck_port="${AWX_HEALTHCHECK_PORT:-8013}"
+receptor_socket="${RECEPTORCTL_SOCKET:-/var/run/awx-receptor/receptor.sock}"
+
+wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}/api/"
+
+supervisorctl -c /etc/supervisord.conf status |
+	awk 'NF >= 2 && $2 != "RUNNING" { bad=1 } END { exit bad }'
+
+receptorctl --socket "$receptor_socket" status >/dev/null 2>&1

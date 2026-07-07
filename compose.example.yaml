@@ -62,13 +62,7 @@ services:
       SDB_PORT: "7899"
       UWSGI_MOUNT_PATH: /
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          wget -q -T 10 -O /dev/null http://127.0.0.1:8013/api/ &&
-          supervisorctl -c /etc/supervisord.conf status |
-          awk 'NF >= 2 && $2 != "RUNNING" { bad=1 } END { exit bad }' &&
-          receptorctl --socket /var/run/awx-receptor/receptor.sock status >/dev/null 2>&1
+      test: ["CMD", "/usr/local/bin/awx-wrapper-healthcheck"]
       interval: 30s
       timeout: 15s
       start_period: 5m

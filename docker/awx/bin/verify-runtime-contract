@@ -8,6 +8,7 @@ test -f /awx_devel/manage.py
 test -f /awx_devel/LICENSE.md
 test ! -e /awx_devel/.git
 test -x /usr/local/bin/awx-wrapper-entrypoint
+test -x /usr/local/bin/awx-wrapper-healthcheck
 test -f /etc/supervisord.conf
 test -x /usr/local/bin/awx-manage
 
