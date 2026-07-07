@@ -75,12 +75,16 @@ podman kube play --down pod.example.yaml --force
 
 The AWX container is privileged because it starts nested Podman containers for
 execution environments. Rootless Podman works when the host allows privileged
-rootless containers; otherwise use rootful Podman for this smoke test.
+rootless containers; otherwise use rootful Podman for this smoke test. The pod
+example configures nested Podman with `vfs` storage and disabled nested cgroups
+for rootless compatibility; that is slower than overlay storage, but avoids
+known nested rootless storage and cgroup failures.
 
 Example browser snapshots from this pod:
 
 - [Login screen](docs/snapshots/awx-pod-login.png)
 - [Overview dashboard](docs/snapshots/awx-pod-dashboard.png)
+- [Jobs list](docs/snapshots/awx-pod-jobs.png)
 
 ## Publish image with CI/CD
 

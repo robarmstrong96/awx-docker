@@ -48,6 +48,16 @@ spec:
         - -lc
       args:
         - |
+          install -d -m 0755 /etc/containers/containers.conf.d
+          cat >/etc/containers/containers.conf.d/awx-rootless-pod.conf <<'EOF'
+          [containers]
+          cgroups = "disabled"
+          EOF
+          sed -i \
+            -e 's/^driver = .*/driver = "vfs"/' \
+            -e 's|^mount_program|#mount_program|' \
+            -e 's|^mountopt|#mountopt|' \
+            /etc/containers/storage.conf
           until pg_isready -h 127.0.0.1 -p 5432 -U "$AWX_DB_USER" -d "$AWX_DB_NAME"; do
             sleep 2
           done
