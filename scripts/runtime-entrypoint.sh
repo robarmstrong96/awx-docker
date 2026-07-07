@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# require_env -- return non-zero when any required variable is unset or empty
 require_env() {
 	local missing=0
 	for name in "$@"; do
@@ -12,6 +13,9 @@ require_env() {
 	return "$missing"
 }
 
+# write_dynamic_users -- update user/group files for the runtime UID
+#
+# AWX still needs an awx user, nginx entries, and Podman UID/GID ranges.
 write_dynamic_users() {
 	if [[ "$(id -u)" -lt 500 && -n "${CURRENT_UID:-}" ]]; then
 		return
@@ -36,6 +40,11 @@ write_dynamic_users() {
 	printf 'awx:100000:50001\n' >/etc/subgid
 }
 
+# write_awx_config -- generate AWX config files from environment variables
+#
+# The image already includes the static config pieces. Secrets and service
+# addresses are supplied at deployment time. Stop immediately if any required
+# value is missing so AWX does not start with incomplete config.
 write_awx_config() {
 	local config_src=/usr/local/share/awx-docker/tower
 
@@ -61,6 +70,14 @@ write_awx_config() {
 	touch /etc/receptor/receptor.conf.lock
 }
 
+# reset_podman_run_state -- clear container-local Podman runtime state
+#
+# Nested Podman caches boot-specific state under /run, including the previous
+# boot ID, and may refuse to start execution-environment containers after the
+# outer host or container restarts.
+#
+# Only runtime paths are removed here. Persistent AWX state and image storage
+# live elsewhere.
 reset_podman_run_state() {
 	local dir removed=0
 
