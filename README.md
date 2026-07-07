@@ -21,7 +21,7 @@ common local commands.
 - Docker or another BuildKit-capable container builder
 - Dagger
 - Just for local command aliases
-- Python and uv for local tests outside Dagger
+- uv with Python 3.12 for local tests outside Dagger
 
 ## Build And Verify
 

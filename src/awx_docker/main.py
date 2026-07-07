@@ -12,6 +12,12 @@ from awx_docker.config import (
     DEFAULT_RECEPTOR_IMAGE,
 )
 
+TEST_PYTHON_VERSION = "3.12"
+
+
+def _uv_python(*args: str) -> list[str]:
+    return ["uv", "run", "--python", TEST_PYTHON_VERSION, "python", *args]
+
 
 @object_type
 class AwxDocker:
@@ -19,7 +25,7 @@ class AwxDocker:
     async def check(self, source: dagger.Directory) -> str:
         """Run lint and unit tests."""
         ctr = self._lint_container(source)
-        ctr = ctr.with_exec(["uv", "run", "pytest", "tests/unit"])
+        ctr = ctr.with_exec(_uv_python("-m", "pytest", "tests/unit"))
         return await ctr.stdout()
 
     @function
@@ -35,7 +41,9 @@ class AwxDocker:
     @function
     async def test(self, source: dagger.Directory) -> str:
         """Run unit tests."""
-        return await self._python(source).with_exec(["uv", "run", "pytest", "tests/unit"]).stdout()
+        return (
+            await self._python(source).with_exec(_uv_python("-m", "pytest", "tests/unit")).stdout()
+        )
 
     @function
     async def resolve_ref(
@@ -286,7 +294,7 @@ class AwxDocker:
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
         ctr = ctr.with_exec(
-            ["python3", "-m", "py_compile", "docker/awx/bin/verify-awx-python-contract"]
+            _uv_python("-m", "py_compile", "docker/awx/bin/verify-awx-python-contract")
         )
         return ctr.with_exec(["actionlint"])
 
