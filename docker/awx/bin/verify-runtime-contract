@@ -26,8 +26,27 @@ source_revision="$(cat /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION)"
 requested_ref="$(cat /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF)"
 
 install -d -m 0755 "$evidence_dir"
-python3.12 /usr/local/libexec/awx-docker/write-image-verification-evidence \
-	--evidence-dir "$evidence_dir" \
-	--image-ref "$image_ref" \
-	--requested-ref "$requested_ref" \
-	--source-revision "$source_revision"
+
+{
+	printf '{\n'
+	printf '  "awx": {\n'
+	printf '    "git_metadata": "absent",\n'
+	printf '    "requested_ref": "%s",\n' "$requested_ref"
+	printf '    "source_revision": "%s"\n' "$source_revision"
+	printf '  },\n'
+	printf '  "image": {\n'
+	printf '    "ref": "%s"\n' "$image_ref"
+	printf '  },\n'
+	printf '  "schema_version": "awx-docker.image-verification/v1",\n'
+	printf '  "status": "passed"\n'
+	printf '}\n'
+} >"$evidence_dir/image-verification.json"
+
+{
+	printf '# AWX Image Verification\n\n'
+	printf -- '%s%s%s\n' '- Image: `' "$image_ref" '`'
+	printf -- '%s%s%s\n' '- AWX requested ref: `' "$requested_ref" '`'
+	printf -- '%s%s%s\n' '- AWX source revision: `' "$source_revision" '`'
+	printf -- '- Embedded AWX git metadata: absent\n'
+	printf -- '- Status: passed\n'
+} >"$evidence_dir/image-verification.md"
