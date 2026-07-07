@@ -1,0 +1,8 @@
+from importlib.metadata import distribution
+
+dist = distribution("awx")
+assert any(ep.group == "console_scripts" and ep.name == "awx-manage" for ep in dist.entry_points)
+
+import awx
+
+assert awx.__version__

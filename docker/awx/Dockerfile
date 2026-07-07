@@ -109,7 +109,9 @@ USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/synthesize-awx-dist-info /usr/local/libexec/awx-docker/synthesize-awx-dist-info
 COPY docker/awx/bin/prepare-runtime-layout /usr/local/libexec/awx-docker/prepare-runtime-layout
+COPY docker/awx/bin/verify-awx-python-contract /usr/local/libexec/awx-docker/verify-awx-python-contract
 COPY docker/awx/bin/verify-runtime-contract /usr/local/libexec/awx-docker/verify-runtime-contract
+COPY docker/awx/bin/write-image-verification-evidence /usr/local/libexec/awx-docker/write-image-verification-evidence
 COPY docker/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \

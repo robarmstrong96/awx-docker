@@ -265,6 +265,12 @@ class AwxDocker:
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
+        ctr = ctr.with_exec(
+            ["python3", "-m", "py_compile", "docker/awx/bin/verify-awx-python-contract"]
+        )
+        ctr = ctr.with_exec(
+            ["python3", "-m", "py_compile", "docker/awx/bin/write-image-verification-evidence"]
+        )
         return ctr.with_exec(["actionlint"])
 
     async def _prepare_image_source(

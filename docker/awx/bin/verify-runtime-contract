@@ -12,15 +12,7 @@ test -x /usr/local/bin/awx-wrapper-healthcheck
 test -f /etc/supervisord.conf
 test -x /usr/local/bin/awx-manage
 
-/var/lib/awx/venv/awx/bin/python - <<'PY'
-from importlib.metadata import distribution
-
-dist = distribution("awx")
-assert any(ep.group == "console_scripts" and ep.name == "awx-manage" for ep in dist.entry_points)
-import awx
-
-assert awx.__version__
-PY
+/var/lib/awx/venv/awx/bin/python /usr/local/libexec/awx-docker/verify-awx-python-contract
 
 test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
 test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
@@ -30,27 +22,8 @@ source_revision="$(cat /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION)"
 requested_ref="$(cat /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF)"
 
 install -d -m 0755 "$evidence_dir"
-cat >"$evidence_dir/image-verification.json" <<EOF
-{
-  "awx": {
-    "git_metadata": "absent",
-    "requested_ref": "$requested_ref",
-    "source_revision": "$source_revision"
-  },
-  "image": {
-    "ref": "$image_ref"
-  },
-  "schema_version": "awx-docker.image-verification/v1",
-  "status": "passed"
-}
-EOF
-
-cat >"$evidence_dir/image-verification.md" <<EOF
-# AWX Image Verification
-
-- Image: \`$image_ref\`
-- AWX requested ref: \`$requested_ref\`
-- AWX source revision: \`$source_revision\`
-- Embedded AWX git metadata: absent
-- Status: passed
-EOF
+python3.12 /usr/local/libexec/awx-docker/write-image-verification-evidence \
+	--evidence-dir "$evidence_dir" \
+	--image-ref "$image_ref" \
+	--requested-ref "$requested_ref" \
+	--source-revision "$source_revision"
