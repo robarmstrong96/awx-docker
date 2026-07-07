@@ -56,6 +56,26 @@ docker compose --env-file .env -f compose.example.yaml up -d
 The example defaults to `ghcr.io/robarmstrong96/awx-docker:production`. To test a
 local export or another registry tag, set `AWX_IMAGE` in `.env`.
 
+## Example Podman Pod Smoke Test
+
+`pod.example.yaml` starts the same basic smoke-test stack through
+`podman kube play`: one pod with Postgres, Redis, and the AWX container. It uses
+loopback addresses between containers because containers in a pod share one
+network namespace.
+
+Edit the `change-me` values in the file before use. The example publishes AWX
+on `http://localhost:8014` so it can run next to the Compose example, which
+defaults to port `8013`.
+
+```bash
+sudo podman kube play --replace pod.example.yaml
+sudo podman pod logs -f awx-docker-example
+sudo podman kube play --down pod.example.yaml
+```
+
+Use rootful Podman for this example. The AWX container is privileged because it
+starts nested Podman containers for execution environments.
+
 ## Publish image with CI/CD
 
 The `Publish` workflow builds, verifies, and pushes an image from GitHub
