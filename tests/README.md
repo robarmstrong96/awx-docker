@@ -2,10 +2,10 @@
 
 This directory contains fast tests for the AWX image builder wrapper.
 
-The tests focus on behavior that should stay stable without building the full
-image on every run: AWX ref resolution, small metadata writers, and Make
-aliases.
+The tests keep local checks lightweight. Full image build behavior is covered
+by the Dagger build/verify path; unit tests cover small helpers and the
+lint/build Just recipes.
 
 ## Layout
 
-- `unit/`: fast Python tests for wrapper helpers and local command aliases.
+- `unit/`: fast Python tests for wrapper helpers and local recipe wiring.

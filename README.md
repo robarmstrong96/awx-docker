@@ -13,13 +13,14 @@ This is a thin image builder. The Dockerfile clones upstream AWX during the
 image build, assembles the runtime files, and keeps source and license metadata
 inside the image.
 
-Dagger is the main command surface. Make is only a small convenience layer for
+Dagger is the main command surface. Just is only a small convenience layer for
 common local commands.
 
 ## Requirements
 
 - Docker or another BuildKit-capable container builder
 - Dagger
+- Just for local command aliases
 - Python and uv for local tests outside Dagger
 
 ## Build And Verify
@@ -97,18 +98,18 @@ The `Publish` workflow builds, verifies, and pushes an image from GitHub
 Actions. It publishes to `ghcr.io/<owner>/<repo>:<tag>` by default when
 `image_ref` is not set.
 
-Optional Make aliases:
+Optional Just recipes:
 
 ```bash
-make check
-make lint
-make format
-make test
-make build
-make verify
-make export
-make clean
-make distclean
+just check
+just lint
+just format
+just test
+just build
+just verify
+just export
+just clean
+just distclean
 ```
 
 ## Defaults
@@ -121,15 +122,15 @@ make distclean
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 
-Useful environment variables for Make aliases:
+Useful environment variables for Just recipes:
 
 - `UPSTREAM_REF`: AWX branch, tag, or commit to build
 - `AWX_UI_REF`: ansible-ui tag or commit to build
 - `AWX_UI_REPO`: ansible-ui repository to fetch UI source from
-- `IMAGE_NAME`: local image name used by `make build` and `make verify`
-- `IMAGE_TAG`: local image tag used by `make build` and `make verify`
-- `IMAGE_REF`: image reference used by `make export`
-- `OUTPUT`: tarball path used by `make export`
+- `IMAGE_NAME`: local image name used by `just build` and `just verify`
+- `IMAGE_TAG`: local image tag used by `just build` and `just verify`
+- `IMAGE_REF`: image reference used by `just export`
+- `OUTPUT`: tarball path used by `just export`
 
 ## Runtime Check
 

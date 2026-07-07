@@ -237,7 +237,6 @@ class AwxDocker:
                     "--no-install-recommends",
                     "ca-certificates",
                     "git",
-                    "make",
                 ]
             )
             .with_exec(["uv", "sync", "--all-groups"])
