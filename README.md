@@ -68,13 +68,19 @@ on `http://localhost:8014` so it can run next to the Compose example, which
 defaults to port `8013`.
 
 ```bash
-sudo podman kube play --replace pod.example.yaml
-sudo podman pod logs -f awx-docker-example
-sudo podman kube play --down pod.example.yaml
+podman kube play --replace pod.example.yaml
+podman pod logs -f awx-docker-example
+podman kube play --down pod.example.yaml --force
 ```
 
-Use rootful Podman for this example. The AWX container is privileged because it
-starts nested Podman containers for execution environments.
+The AWX container is privileged because it starts nested Podman containers for
+execution environments. Rootless Podman works when the host allows privileged
+rootless containers; otherwise use rootful Podman for this smoke test.
+
+Example browser snapshots from this pod:
+
+- [Login screen](docs/snapshots/awx-pod-login.png)
+- [Overview dashboard](docs/snapshots/awx-pod-dashboard.png)
 
 ## Publish image with CI/CD
 
