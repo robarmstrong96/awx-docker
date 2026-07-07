@@ -29,11 +29,14 @@ def test_make_image_targets_are_dagger_aliases() -> None:
 
     assert "dagger call build --source=." in build
     assert "--upstream-ref=" in build
+    assert "--awx-ui-ref=" in build
     assert "--image-name=" in build
     assert "--image-tag=" in build
     assert "dagger call verify --source=." in verify
+    assert "--awx-ui-ref=" in verify
     assert "export --path=build/evidence" in verify
     assert "dagger call export --source=." in export
+    assert "--awx-ui-ref=" in export
     assert "--image-ref=" in export
 
 

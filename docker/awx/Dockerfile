@@ -8,6 +8,8 @@ ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel
 ARG AWX_REQUESTED_REF=devel
 ARG AWX_SOURCE_REVISION=unknown
+ARG AWX_UI_REPO=https://github.com/ansible/ansible-ui.git
+ARG AWX_UI_REF=v2.4.313
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
 
 # ----- Receptor binary --------------------------------------------------------
@@ -31,15 +33,19 @@ RUN /usr/local/libexec/awx-docker/prepare-awx-source
 # ----- UI assets --------------------------------------------------------------
 
 FROM ${CENTOS_STREAM_IMAGE} AS ui-builder
+ARG AWX_UI_REPO
+ARG AWX_UI_REF
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
+COPY docker/awx/bin/prepare-awx-ui-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
 COPY docker/awx/packages/ui-builder.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 
 COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
+RUN /usr/local/libexec/awx-docker/prepare-awx-ui-source
 RUN make ui
 
 # ----- Python packages --------------------------------------------------------
@@ -80,6 +86,8 @@ FROM ${CENTOS_STREAM_IMAGE}
 ARG AWX_REPO
 ARG AWX_REQUESTED_REF
 ARG AWX_SOURCE_REVISION
+ARG AWX_UI_REPO
+ARG AWX_UI_REF
 ARG RECEPTOR_IMAGE
 ARG INSTALL_PYTHON_DEBUGINFO=false
 
@@ -100,6 +108,8 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       dev.awx-wrapper.awx.repo="${AWX_REPO}" \
       dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}" \
       dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}" \
+      dev.awx-wrapper.awx-ui.repo="${AWX_UI_REPO}" \
+      dev.awx-wrapper.awx-ui.ref="${AWX_UI_REF}" \
       dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}"
 
 USER root
@@ -137,7 +147,7 @@ COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 # AWX's dev startup scripts look for the source tree at this path.
 # Copy it into the image, then remove Git history.
 COPY --from=ui-builder /tmp/src /awx_devel
-RUN rm -rf /awx_devel/.git
+RUN rm -rf /awx_devel/.git /awx_devel/awx/ui/src/.git
 
 # ----- Licenses and source info ----------------------------------------------
 

@@ -4,6 +4,8 @@ from dagger import dag, function, object_type
 from awx_docker.config import (
     DEFAULT_AWX_REF,
     DEFAULT_AWX_REPO,
+    DEFAULT_AWX_UI_REF,
+    DEFAULT_AWX_UI_REPO,
     DEFAULT_IMAGE_NAME,
     DEFAULT_IMAGE_TAG,
     DEFAULT_PLATFORM,
@@ -66,6 +68,8 @@ class AwxDocker:
         source: dagger.Directory,
         upstream_repository: str = DEFAULT_AWX_REPO,
         upstream_ref: str = DEFAULT_AWX_REF,
+        awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
+        awx_ui_ref: str = DEFAULT_AWX_UI_REF,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -88,6 +92,8 @@ class AwxDocker:
             upstream_repository,
             upstream_ref,
             resolved_sha,
+            awx_ui_repository,
+            awx_ui_ref,
             image_name,
             image_tag,
             platform,
@@ -101,6 +107,8 @@ class AwxDocker:
         source: dagger.Directory,
         upstream_repository: str = DEFAULT_AWX_REPO,
         upstream_ref: str = DEFAULT_AWX_REF,
+        awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
+        awx_ui_ref: str = DEFAULT_AWX_UI_REF,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -123,6 +131,8 @@ class AwxDocker:
             upstream_repository,
             upstream_ref,
             resolved_sha,
+            awx_ui_repository,
+            awx_ui_ref,
             image_name,
             image_tag,
             platform,
@@ -144,6 +154,8 @@ class AwxDocker:
         source: dagger.Directory,
         upstream_repository: str = DEFAULT_AWX_REPO,
         upstream_ref: str = DEFAULT_AWX_REF,
+        awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
+        awx_ui_ref: str = DEFAULT_AWX_UI_REF,
         resolved_revision: str = "",
         image_ref: str = f"{DEFAULT_IMAGE_NAME}:{DEFAULT_IMAGE_TAG}",
         platform: str = DEFAULT_PLATFORM,
@@ -156,6 +168,8 @@ class AwxDocker:
             source,
             upstream_repository,
             upstream_ref,
+            awx_ui_repository,
+            awx_ui_ref,
             resolved_revision,
             image_name,
             image_tag,
@@ -174,6 +188,8 @@ class AwxDocker:
         awx_repo: str,
         awx_ref: str,
         resolved_sha: str,
+        awx_ui_repo: str,
+        awx_ui_ref: str,
         image_name: str,
         image_tag: str,
         platform: str,
@@ -190,6 +206,8 @@ class AwxDocker:
                     dagger.BuildArg("AWX_REF", resolved_sha),
                     dagger.BuildArg("AWX_REQUESTED_REF", awx_ref),
                     dagger.BuildArg("AWX_SOURCE_REVISION", resolved_sha),
+                    dagger.BuildArg("AWX_UI_REPO", awx_ui_repo),
+                    dagger.BuildArg("AWX_UI_REF", awx_ui_ref),
                     dagger.BuildArg("RECEPTOR_IMAGE", receptor_image),
                 ],
                 ssh=ssh,
@@ -198,6 +216,8 @@ class AwxDocker:
             .with_label("dev.awx-wrapper.awx.repo", awx_repo)
             .with_label("dev.awx-wrapper.awx.ref", awx_ref)
             .with_label("dev.awx-wrapper.awx.revision", resolved_sha)
+            .with_label("dev.awx-wrapper.awx-ui.repo", awx_ui_repo)
+            .with_label("dev.awx-wrapper.awx-ui.ref", awx_ui_ref)
             .with_label("dev.awx-wrapper.image.name", f"{image_name}:{image_tag}")
             .with_label("dev.awx-wrapper.platform", platform)
         )
@@ -261,6 +281,7 @@ class AwxDocker:
         ctr = ctr.with_exec(["shellcheck", "scripts/runtime-entrypoint.sh"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-rpms"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-source"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-ui-source"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-awx-python-deps"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])

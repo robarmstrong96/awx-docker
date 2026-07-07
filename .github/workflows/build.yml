@@ -15,6 +15,10 @@ name: Build
         description: Local image tag passed to Dagger
         required: true
         default: devel
+      awx_ui_ref:
+        description: ansible-ui tag or commit to build
+        required: true
+        default: v2.4.313
 
 permissions:
   contents: read
@@ -34,6 +38,7 @@ jobs:
             verify
             --source=.
             --upstream-ref=${{ inputs.upstream_ref }}
+            --awx-ui-ref=${{ inputs.awx_ui_ref }}
             --image-name=${{ inputs.image_name }}
             --image-tag=${{ inputs.image_tag }}
             export --path=build/evidence

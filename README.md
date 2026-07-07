@@ -32,14 +32,19 @@ dagger call check --source=.
 dagger call resolve-ref --source=. --upstream-ref=devel
 
 # Build the image.
-dagger call build --source=. --upstream-ref=devel
+dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 
 # Build the image and run the runtime contract check.
-dagger call verify --source=. --upstream-ref=devel export --path=build/evidence
+dagger call verify --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 export --path=build/evidence
 
 # Export a verified image as an OCI tarball.
-dagger call export --source=. --upstream-ref=devel --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
 ```
+
+The AWX UI source is pinned separately from the AWX server source. Upstream AWX
+defaults to cloning `ansible-ui` from `main` when building UI assets; this
+wrapper fetches `ansible-ui` at `--awx-ui-ref` first so `make ui` builds from a
+known tag or commit instead of pulling the moving branch.
 
 ## Example Compose Smoke Test
 
@@ -110,6 +115,8 @@ make distclean
 
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
 - Upstream AWX ref: `devel`
+- Upstream AWX UI repo: `https://github.com/ansible/ansible-ui.git`
+- Upstream AWX UI ref: `v2.4.313`
 - Receptor image: `quay.io/ansible/receptor:devel`
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
@@ -117,6 +124,8 @@ make distclean
 Useful environment variables for Make aliases:
 
 - `UPSTREAM_REF`: AWX branch, tag, or commit to build
+- `AWX_UI_REF`: ansible-ui tag or commit to build
+- `AWX_UI_REPO`: ansible-ui repository to fetch UI source from
 - `IMAGE_NAME`: local image name used by `make build` and `make verify`
 - `IMAGE_TAG`: local image tag used by `make build` and `make verify`
 - `IMAGE_REF`: image reference used by `make export`

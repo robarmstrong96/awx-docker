@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${AWX_UI_REPO:?AWX_UI_REPO is required}"
+: "${AWX_UI_REF:?AWX_UI_REF is required}"
+
+ui_src=/tmp/src/awx/ui/src
+
+rm -rf "$ui_src"
+git -c init.defaultBranch=main init "$ui_src"
+git -C "$ui_src" remote add origin "$AWX_UI_REPO"
+git -C "$ui_src" fetch --depth 1 origin "$AWX_UI_REF"
+git -C "$ui_src" checkout --detach FETCH_HEAD
+git -C "$ui_src" rev-parse HEAD >/tmp/src/awx/ui/.awx_ui_source_revision
+printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo
+printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref
