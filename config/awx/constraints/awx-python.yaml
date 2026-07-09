@@ -4,6 +4,9 @@
 # AWX already has its own requirements. Only add something here when we need to
 # force one of those Python packages to a specific version.
 #
+# Check ansible-core vs Python support before pinning core:
+# https://docs.ansible.com/projects/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-core-support-matrix
+#
 # Example:
 #
 # constraints:
