@@ -12,13 +12,13 @@ from awx_docker.config import (
     DEFAULT_IMAGE_TAG,
     DEFAULT_PLATFORM,
     DEFAULT_RECEPTOR_IMAGE,
+    DEFAULT_TOOLING_PYTHON,
+    DEFAULT_TOOLING_UV_IMAGE,
 )
-
-TEST_PYTHON_VERSION = "3.12"
 
 
 def _uv_python(*args: str) -> list[str]:
-    return ["uv", "run", "--python", TEST_PYTHON_VERSION, "python", *args]
+    return ["uv", "run", "--python", DEFAULT_TOOLING_PYTHON, "python", *args]
 
 
 @object_type
@@ -253,7 +253,7 @@ class AwxDocker:
     def _python(self, source: dagger.Directory) -> dagger.Container:
         return (
             dag.container()
-            .from_("ghcr.io/astral-sh/uv:python3.12-bookworm-slim")
+            .from_(DEFAULT_TOOLING_UV_IMAGE)
             .with_directory("/src", source)
             .with_workdir("/src")
             .with_exec(["apt-get", "update"])

@@ -18,3 +18,7 @@ platform = "linux/amd64"
 
 [python]
 constraints = "awx-python.yaml"
+
+[tooling]
+python = "3.12"
+uv_image = "ghcr.io/astral-sh/uv:python3.12-bookworm-slim"

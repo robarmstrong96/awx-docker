@@ -22,7 +22,9 @@ repo root so the normal commands keep working.
 
 The default versions live in `config/components/components.toml`: AWX, AWX UI,
 the base image, receptor, the local image tag, the platform, and the small
-dependency files this wrapper owns.
+dependency files this wrapper owns. It also pins the Python/uv image Dagger
+uses for local checks so the test environment is visible in the same place as
+the build inputs.
 
 Dagger reads that file through the Python config layer and passes the values to
 the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
@@ -155,6 +157,8 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 - Base image: `quay.io/centos/centos:stream9`
 - Receptor image: `quay.io/ansible/receptor:devel`
 - AWX Python constraints: `docker/awx/constraints/awx-python.yaml`
+- Dagger check Python: `3.12`
+- Dagger check image: `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 

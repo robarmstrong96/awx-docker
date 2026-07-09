@@ -34,12 +34,19 @@ class PythonSettings:
 
 
 @dataclass(frozen=True)
+class ToolingSettings:
+    python: str
+    uv_image: str
+
+
+@dataclass(frozen=True)
 class Components:
     schema_version: int
     awx: AwxSource
     awx_ui: AwxUiSource
     images: ImageSettings
     python: PythonSettings
+    tooling: ToolingSettings
 
 
 def load_components_file(path: Path) -> Components:
@@ -56,6 +63,7 @@ def load_components_toml(text: str) -> Components:
     awx_ui = _table(data, "awx_ui")
     images = _table(data, "images")
     python = _table(data, "python")
+    tooling = _table(data, "tooling")
 
     return Components(
         schema_version=schema_version,
@@ -77,6 +85,10 @@ def load_components_toml(text: str) -> Components:
         ),
         python=PythonSettings(
             constraints=_string(python, "constraints"),
+        ),
+        tooling=ToolingSettings(
+            python=_string(tooling, "python"),
+            uv_image=_string(tooling, "uv_image"),
         ),
     )
 
