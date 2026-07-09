@@ -44,27 +44,15 @@ ARG AWX_UI_DELIVERY
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
+COPY docker/awx/bin/install-awx-ui-build-deps /usr/local/libexec/awx-docker/install-awx-ui-build-deps
+COPY docker/awx/bin/prepare-awx-ui-delivery /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
 COPY docker/awx/bin/prepare-awx-ui-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
 COPY docker/awx/packages/ui-builder.rpms /tmp/packages.rpms
-RUN if [ "$AWX_UI_DELIVERY" = "embedded" ]; then \
-      INSTALL_RPMS_ENABLE_NODEJS18=true \
-        /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms; \
-    fi
+RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps
 
 COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
-RUN case "$AWX_UI_DELIVERY" in \
-      embedded) \
-        /usr/local/libexec/awx-docker/prepare-awx-ui-source && \
-        make ui ;; \
-      sideloaded) \
-        printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo && \
-        printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref && \
-        printf 'sideloaded\n' >/tmp/src/awx/ui/.awx_ui_delivery ;; \
-      *) \
-        printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2; \
-        exit 1 ;; \
-    esac
+RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
 
 # ----- Python packages --------------------------------------------------------
 

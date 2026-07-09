@@ -5,10 +5,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
-    dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
+    script = (ROOT / "docker/awx/bin/prepare-awx-ui-delivery").read_text()
 
-    prepare = dockerfile.index("prepare-awx-ui-source")
-    build = dockerfile.index("make ui ;;")
+    prepare = script.index("prepare-awx-ui-source")
+    build = script.index("make ui")
 
     assert prepare < build
 
@@ -16,12 +16,17 @@ def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
 def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
     dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
+    delivery_script = (ROOT / "docker/awx/bin/prepare-awx-ui-delivery").read_text()
+    deps_script = (ROOT / "docker/awx/bin/install-awx-ui-build-deps").read_text()
     verifier = (ROOT / "docker/awx/bin/verify-runtime-contract").read_text()
 
     assert "ARG AWX_UI_DELIVERY=embedded" in dockerfile
+    assert "RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps" in dockerfile
+    assert "RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery" in dockerfile
+    assert 'case "$AWX_UI_DELIVERY"' not in dockerfile
     assert 'dagger.BuildArg("AWX_UI_DELIVERY", awx_ui_delivery)' in dagger_module
-    assert "sideloaded)" in dockerfile
-    assert "make ui ;;" in dockerfile
+    assert "sideloaded)" in delivery_script
+    assert "sideloaded)" in deps_script
     assert "sideloaded)" in verifier
 
 

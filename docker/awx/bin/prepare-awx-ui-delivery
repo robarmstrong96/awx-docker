@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Prepare AWX UI assets according to the selected delivery mode.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+: "${AWX_UI_REPO:?AWX_UI_REPO is required}"
+: "${AWX_UI_REF:?AWX_UI_REF is required}"
+: "${AWX_UI_DELIVERY:=embedded}"
+
+case "$AWX_UI_DELIVERY" in
+	embedded)
+		/usr/local/libexec/awx-docker/prepare-awx-ui-source
+		make ui
+		;;
+	sideloaded)
+		printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo
+		printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref
+		printf 'sideloaded\n' >/tmp/src/awx/ui/.awx_ui_delivery
+		;;
+	*)
+		printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2
+		exit 1
+		;;
+esac
