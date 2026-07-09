@@ -35,7 +35,7 @@ the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
 defaults so a plain `docker build` has a reasonable fallback. It cannot read
 the component manifest itself before `ARG` and `FROM` are evaluated.
 
-Use `docker/awx/constraints/awx-python.yaml` for intentional AWX control-plane
+Use `config/awx/constraints/awx-python.yaml` for intentional AWX control-plane
 Python overrides. Upstream AWX requirements are still the baseline. Pins in
 this file narrow that resolution, and the build fails if a pin cannot work with
 the upstream requirements.
@@ -221,7 +221,7 @@ dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/ou
 - EE Ansible core: `ansible-core==2.15.13`
 - EE Ansible Runner: `ansible-runner==2.4.0`
 - Receptor image: `quay.io/ansible/receptor:devel`
-- AWX Python constraints: `docker/awx/constraints/awx-python.yaml`
+- AWX Python constraints: `config/awx/constraints/awx-python.yaml`
 - Dagger check Python: `3.12`
 - Dagger check image: `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`
 - Local image tag: `awx-devel:devel`

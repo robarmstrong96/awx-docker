@@ -82,7 +82,14 @@ def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
         'AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}"'
         in dockerfile
     )
+    assert "COPY config/awx/constraints /tmp/requirements/constraints" in dockerfile
     assert 'export PIP_CONSTRAINT="$pip_constraints"' in installer
+
+
+def test_dockerfile_copies_awx_package_repos_from_config() -> None:
+    dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
+
+    assert "COPY config/awx/repos/ansible-rsyslog-epel-9.repo" in dockerfile
 
 
 def test_awx_python_yaml_constraints_render_to_pip_constraints(tmp_path: Path) -> None:

@@ -82,7 +82,7 @@ COPY --from=awx-source /awx-src/requirements/requirements.txt /tmp/requirements/
 COPY --from=awx-source /awx-src/requirements/requirements_tower_uninstall.txt /tmp/requirements/requirements_tower_uninstall.txt
 COPY --from=awx-source /awx-src/requirements/requirements_git.txt /tmp/requirements/requirements_git.txt
 COPY --from=awx-source /awx-src/requirements/requirements_dev.txt /tmp/requirements/requirements_dev.txt
-COPY docker/awx/constraints /tmp/requirements/constraints
+COPY config/awx/constraints /tmp/requirements/constraints
 
 WORKDIR /tmp
 RUN --mount=type=ssh AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}" \
@@ -135,7 +135,7 @@ COPY docker/awx/bin/synthesize-awx-dist-info /usr/local/libexec/awx-docker/synth
 COPY docker/awx/bin/prepare-runtime-layout /usr/local/libexec/awx-docker/prepare-runtime-layout
 COPY docker/awx/bin/verify-awx-python-contract /usr/local/libexec/awx-docker/verify-awx-python-contract
 COPY docker/awx/bin/verify-runtime-contract /usr/local/libexec/awx-docker/verify-runtime-contract
-COPY docker/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
+COPY config/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
