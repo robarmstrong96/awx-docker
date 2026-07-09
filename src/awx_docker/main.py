@@ -5,6 +5,7 @@ from awx_docker.config import (
     DEFAULT_AWX_PYTHON_CONSTRAINTS,
     DEFAULT_AWX_REF,
     DEFAULT_AWX_REPO,
+    DEFAULT_AWX_UI_DELIVERY,
     DEFAULT_AWX_UI_REF,
     DEFAULT_AWX_UI_REPO,
     DEFAULT_BASE_IMAGE,
@@ -80,6 +81,7 @@ class AwxDocker:
         upstream_ref: str = DEFAULT_AWX_REF,
         awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
         awx_ui_ref: str = DEFAULT_AWX_UI_REF,
+        awx_ui_delivery: str = DEFAULT_AWX_UI_DELIVERY,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -100,6 +102,7 @@ class AwxDocker:
             resolved_sha,
             awx_ui_repository,
             awx_ui_ref,
+            awx_ui_delivery,
             image_name,
             image_tag,
             platform,
@@ -117,6 +120,7 @@ class AwxDocker:
         upstream_ref: str = DEFAULT_AWX_REF,
         awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
         awx_ui_ref: str = DEFAULT_AWX_UI_REF,
+        awx_ui_delivery: str = DEFAULT_AWX_UI_DELIVERY,
         resolved_revision: str = "",
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
@@ -137,6 +141,7 @@ class AwxDocker:
             resolved_sha,
             awx_ui_repository,
             awx_ui_ref,
+            awx_ui_delivery,
             image_name,
             image_tag,
             platform,
@@ -158,6 +163,7 @@ class AwxDocker:
         upstream_ref: str = DEFAULT_AWX_REF,
         awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
         awx_ui_ref: str = DEFAULT_AWX_UI_REF,
+        awx_ui_delivery: str = DEFAULT_AWX_UI_DELIVERY,
         resolved_revision: str = "",
         image_ref: str = f"{DEFAULT_IMAGE_NAME}:{DEFAULT_IMAGE_TAG}",
         platform: str = DEFAULT_PLATFORM,
@@ -174,6 +180,7 @@ class AwxDocker:
             upstream_ref,
             awx_ui_repository,
             awx_ui_ref,
+            awx_ui_delivery,
             resolved_revision,
             image_name,
             image_tag,
@@ -196,6 +203,7 @@ class AwxDocker:
         resolved_sha: str,
         awx_ui_repo: str,
         awx_ui_ref: str,
+        awx_ui_delivery: str,
         image_name: str,
         image_tag: str,
         platform: str,
@@ -217,6 +225,7 @@ class AwxDocker:
                     dagger.BuildArg("AWX_SOURCE_REVISION", resolved_sha),
                     dagger.BuildArg("AWX_UI_REPO", awx_ui_repo),
                     dagger.BuildArg("AWX_UI_REF", awx_ui_ref),
+                    dagger.BuildArg("AWX_UI_DELIVERY", awx_ui_delivery),
                     dagger.BuildArg("RECEPTOR_IMAGE", receptor_image),
                     dagger.BuildArg("AWX_PYTHON_CONSTRAINTS", python_constraints),
                 ],
@@ -228,6 +237,7 @@ class AwxDocker:
             .with_label("dev.awx-wrapper.awx.revision", resolved_sha)
             .with_label("dev.awx-wrapper.awx-ui.repo", awx_ui_repo)
             .with_label("dev.awx-wrapper.awx-ui.ref", awx_ui_ref)
+            .with_label("dev.awx-wrapper.awx-ui.delivery", awx_ui_delivery)
             .with_label("dev.awx-wrapper.base.image", base_image)
             .with_label("dev.awx-wrapper.image.name", f"{image_name}:{image_tag}")
             .with_label("dev.awx-wrapper.platform", platform)

@@ -23,3 +23,4 @@ git -C "$ui_src" checkout --detach FETCH_HEAD
 git -C "$ui_src" rev-parse HEAD >/tmp/src/awx/ui/.awx_ui_source_revision
 printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo
 printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref
+printf 'embedded\n' >/tmp/src/awx/ui/.awx_ui_delivery

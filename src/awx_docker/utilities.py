@@ -74,7 +74,7 @@ def load_components_toml(text: str) -> Components:
         awx_ui=AwxUiSource(
             repository=_string(awx_ui, "repository"),
             ref=_string(awx_ui, "ref"),
-            delivery=_string(awx_ui, "delivery"),
+            delivery=_choice(awx_ui, "delivery", {"embedded", "sideloaded"}),
         ),
         images=ImageSettings(
             base=_string(images, "base"),
@@ -104,6 +104,14 @@ def _string(data: dict[str, Any], key: str) -> str:
     value = data.get(key)
     if not isinstance(value, str) or not value:
         raise ValueError(f"components field {key!r} must be a non-empty string")
+    return value
+
+
+def _choice(data: dict[str, Any], key: str, choices: set[str]) -> str:
+    value = _string(data, key)
+    if value not in choices:
+        expected = ", ".join(sorted(choices))
+        raise ValueError(f"components field {key!r} must be one of: {expected}")
     return value
 
 

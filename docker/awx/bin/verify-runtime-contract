@@ -15,10 +15,9 @@ image_ref="${1:-awx-devel:devel}"
 test -f /awx_devel/manage.py
 test -f /awx_devel/LICENSE.md
 test ! -e /awx_devel/.git
+test -f /awx_devel/awx/ui/.awx_ui_delivery
 test -f /awx_devel/awx/ui/.awx_ui_repo
 test -f /awx_devel/awx/ui/.awx_ui_requested_ref
-test -f /awx_devel/awx/ui/.awx_ui_source_revision
-test ! -e /awx_devel/awx/ui/src/.git
 test -x /usr/local/bin/awx-wrapper-entrypoint
 test -x /usr/local/bin/awx-wrapper-healthcheck
 test -f /etc/supervisord.conf
@@ -29,5 +28,18 @@ test -x /usr/local/bin/awx-manage
 test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
 test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 test -f /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION
+
+case "${AWX_UI_DELIVERY:-embedded}" in
+	embedded)
+		test -f /awx_devel/awx/ui/.awx_ui_source_revision
+		test ! -e /awx_devel/awx/ui/src/.git
+		;;
+	sideloaded)
+		;;
+	*)
+		printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2
+		exit 1
+		;;
+esac
 
 printf 'runtime-contract: ok (%s)\n' "$image_ref"

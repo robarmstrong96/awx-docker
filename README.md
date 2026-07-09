@@ -21,10 +21,10 @@ repo root so the normal commands keep working.
 ## Component Versions
 
 The default versions live in `config/components/components.toml`: AWX, AWX UI,
-the base image, receptor, the local image tag, the platform, and the small
-dependency files this wrapper owns. It also pins the Python/uv image Dagger
-uses for local checks so the test environment is visible in the same place as
-the build inputs.
+the AWX UI delivery mode, the base image, receptor, the local image tag, the
+platform, and the small dependency files this wrapper owns. It also pins the
+Python/uv image Dagger uses for local checks so the test environment is visible
+in the same place as the build inputs.
 
 Dagger reads that file through the Python config layer and passes the values to
 the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
@@ -71,6 +71,25 @@ lives in `config/components/components.toml`, and `--awx-ui-ref` can still
 override it for one Dagger call. Upstream AWX normally clones `ansible-ui` from
 `main` while building UI assets; this wrapper checks out the configured UI ref
 first so `make ui` builds from a known tag or commit instead of a moving branch.
+
+## AWX UI Delivery
+
+The default `embedded` mode builds the pinned AWX UI into the image. Use
+`sideloaded` when you want one AWX runtime image and a separately built UI
+bundle:
+
+```bash
+dagger call export \
+  --source=. \
+  --awx-ui-delivery=sideloaded \
+  --image-ref=awx-devel:sideloaded \
+  export --path=build/out/awx-devel-sideloaded.tar
+```
+
+At runtime, mount the built static bundle at `/var/lib/awx/public/static`.
+That directory is what nginx serves for `/static`, `/locales`, and
+`/favicon.ico`. The image does not copy or sync sideloaded assets during
+startup.
 
 ## Example Compose Smoke Test
 
@@ -154,6 +173,7 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 - Upstream AWX ref: `devel`
 - Upstream AWX UI repo: `https://github.com/ansible/ansible-ui.git`
 - Upstream AWX UI ref: `v2.4.313`
+- AWX UI delivery: `embedded`
 - Base image: `quay.io/centos/centos:stream9`
 - Receptor image: `quay.io/ansible/receptor:devel`
 - AWX Python constraints: `docker/awx/constraints/awx-python.yaml`

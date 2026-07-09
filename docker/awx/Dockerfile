@@ -13,6 +13,7 @@ ARG AWX_REQUESTED_REF=devel
 ARG AWX_SOURCE_REVISION=unknown
 ARG AWX_UI_REPO=https://github.com/ansible/ansible-ui.git
 ARG AWX_UI_REF=v2.4.313
+ARG AWX_UI_DELIVERY=embedded
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
 ARG AWX_PYTHON_CONSTRAINTS=awx-python.yaml
 
@@ -39,18 +40,31 @@ RUN /usr/local/libexec/awx-docker/prepare-awx-source
 FROM ${CENTOS_STREAM_IMAGE} AS ui-builder
 ARG AWX_UI_REPO
 ARG AWX_UI_REF
+ARG AWX_UI_DELIVERY
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/prepare-awx-ui-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
 COPY docker/awx/packages/ui-builder.rpms /tmp/packages.rpms
-RUN INSTALL_RPMS_ENABLE_NODEJS18=true \
-    /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
+RUN if [ "$AWX_UI_DELIVERY" = "embedded" ]; then \
+      INSTALL_RPMS_ENABLE_NODEJS18=true \
+        /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms; \
+    fi
 
 COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
-RUN /usr/local/libexec/awx-docker/prepare-awx-ui-source
-RUN make ui
+RUN case "$AWX_UI_DELIVERY" in \
+      embedded) \
+        /usr/local/libexec/awx-docker/prepare-awx-ui-source && \
+        make ui ;; \
+      sideloaded) \
+        printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo && \
+        printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref && \
+        printf 'sideloaded\n' >/tmp/src/awx/ui/.awx_ui_delivery ;; \
+      *) \
+        printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2; \
+        exit 1 ;; \
+    esac
 
 # ----- Python packages --------------------------------------------------------
 
@@ -95,6 +109,7 @@ ARG AWX_REQUESTED_REF
 ARG AWX_SOURCE_REVISION
 ARG AWX_UI_REPO
 ARG AWX_UI_REF
+ARG AWX_UI_DELIVERY
 ARG RECEPTOR_IMAGE
 ARG AWX_PYTHON_CONSTRAINTS
 ARG INSTALL_PYTHON_DEBUGINFO=false
@@ -103,6 +118,7 @@ ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
     AWX_LOGGING_MODE=stdout \
+    AWX_UI_DELIVERY="${AWX_UI_DELIVERY}" \
     HOME=/var/lib/awx \
     PATH="/var/lib/awx/venv/awx/bin/:${PATH}" \
     SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}" \
@@ -118,6 +134,7 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}" \
       dev.awx-wrapper.awx-ui.repo="${AWX_UI_REPO}" \
       dev.awx-wrapper.awx-ui.ref="${AWX_UI_REF}" \
+      dev.awx-wrapper.awx-ui.delivery="${AWX_UI_DELIVERY}" \
       dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}" \
       dev.awx-wrapper.python.constraints="${AWX_PYTHON_CONSTRAINTS}"
 
