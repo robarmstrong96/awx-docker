@@ -1,95 +1,20 @@
-"""Parsing helpers for the shared component version manifest."""
+"""Parser for config/components/components.toml."""
 
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
-
-class AwxUiDelivery(StrEnum):
-    """Supported ways to ship AWX UI static files."""
-
-    EMBEDDED = "embedded"
-    SIDELOADED = "sideloaded"
-
-
-@dataclass(frozen=True)
-class AwxSource:
-    """Upstream AWX repository and ref to build."""
-
-    repository: str
-    ref: str
-
-
-@dataclass(frozen=True)
-class AwxUiSource:
-    """Pinned AWX UI source and delivery mode."""
-
-    repository: str
-    ref: str
-    delivery: AwxUiDelivery
-
-
-@dataclass(frozen=True)
-class AwxUiBundleSettings:
-    """Defaults for the exported static UI bundle."""
-
-    name: str
-    tag: str
-    export_path: str
-
-
-@dataclass(frozen=True)
-class AwxEeSettings:
-    """Defaults for the starter AWX execution environment image."""
-
-    base: str
-    name: str
-    tag: str
-    platform: str
-
-
-@dataclass(frozen=True)
-class ImageSettings:
-    """Defaults for the AWX control-plane image build."""
-
-    base: str
-    receptor: str
-    name: str
-    tag: str
-    platform: str
-
-
-@dataclass(frozen=True)
-class PythonSettings:
-    """Python dependency knobs owned by this wrapper."""
-
-    constraints: str
-
-
-@dataclass(frozen=True)
-class ToolingSettings:
-    """Local tooling versions used by Dagger checks."""
-
-    python: str
-    uv_image: str
-
-
-@dataclass(frozen=True)
-class Components:
-    """Typed view of config/components/components.toml."""
-
-    schema_version: int
-    awx: AwxSource
-    awx_ui: AwxUiSource
-    awx_ui_bundle: AwxUiBundleSettings
-    awx_ee: AwxEeSettings
-    images: ImageSettings
-    python: PythonSettings
-    tooling: ToolingSettings
+from awx_docker.config.awx import AwxSource
+from awx_docker.config.awx_ee import AwxEeSettings
+from awx_docker.config.awx_ui import AwxUiDelivery, AwxUiSource
+from awx_docker.config.awx_ui_bundle import AwxUiBundleSettings
+from awx_docker.config.components import Components
+from awx_docker.config.image import ImageSettings
+from awx_docker.config.python import PythonSettings
+from awx_docker.config.tooling import ToolingSettings
 
 
 def load_components_file(path: Path) -> Components:

@@ -1,0 +1,74 @@
+"""Default build settings loaded from the component manifest."""
+
+from pathlib import Path
+
+from awx_docker.config.awx import AwxSource
+from awx_docker.config.awx_ee import AwxEeSettings
+from awx_docker.config.awx_ui import AwxUiDelivery, AwxUiSource
+from awx_docker.config.awx_ui_bundle import AwxUiBundleSettings
+from awx_docker.config.components import Components
+from awx_docker.config.file_util import load_components_file, load_components_toml
+from awx_docker.config.image import ImageSettings
+from awx_docker.config.python import PythonSettings
+from awx_docker.config.tooling import ToolingSettings
+
+DEFAULT_COMPONENTS_FILE = "config/components/components.toml"
+DEFAULT_COMPONENTS = load_components_file(
+    Path(__file__).resolve().parents[3] / DEFAULT_COMPONENTS_FILE
+)
+DEFAULT_AWX_REPO = DEFAULT_COMPONENTS.awx.repository
+DEFAULT_AWX_REF = DEFAULT_COMPONENTS.awx.ref
+DEFAULT_AWX_UI_REPO = DEFAULT_COMPONENTS.awx_ui.repository
+DEFAULT_AWX_UI_REF = DEFAULT_COMPONENTS.awx_ui.ref
+DEFAULT_AWX_UI_DELIVERY = DEFAULT_COMPONENTS.awx_ui.delivery.value
+DEFAULT_AWX_UI_BUNDLE_NAME = DEFAULT_COMPONENTS.awx_ui_bundle.name
+DEFAULT_AWX_UI_BUNDLE_TAG = DEFAULT_COMPONENTS.awx_ui_bundle.tag
+DEFAULT_AWX_UI_BUNDLE_EXPORT_PATH = DEFAULT_COMPONENTS.awx_ui_bundle.export_path
+DEFAULT_AWX_EE_BASE_IMAGE = DEFAULT_COMPONENTS.awx_ee.base
+DEFAULT_AWX_EE_IMAGE_NAME = DEFAULT_COMPONENTS.awx_ee.name
+DEFAULT_AWX_EE_IMAGE_TAG = DEFAULT_COMPONENTS.awx_ee.tag
+DEFAULT_AWX_EE_PLATFORM = DEFAULT_COMPONENTS.awx_ee.platform
+DEFAULT_BASE_IMAGE = DEFAULT_COMPONENTS.images.base
+DEFAULT_RECEPTOR_IMAGE = DEFAULT_COMPONENTS.images.receptor
+DEFAULT_PLATFORM = DEFAULT_COMPONENTS.images.platform
+DEFAULT_IMAGE_NAME = DEFAULT_COMPONENTS.images.name
+DEFAULT_IMAGE_TAG = DEFAULT_COMPONENTS.images.tag
+DEFAULT_AWX_PYTHON_CONSTRAINTS = DEFAULT_COMPONENTS.python.constraints
+DEFAULT_TOOLING_PYTHON = DEFAULT_COMPONENTS.tooling.python
+DEFAULT_TOOLING_UV_IMAGE = DEFAULT_COMPONENTS.tooling.uv_image
+
+__all__ = [
+    "AwxEeSettings",
+    "AwxSource",
+    "AwxUiBundleSettings",
+    "AwxUiDelivery",
+    "AwxUiSource",
+    "Components",
+    "DEFAULT_AWX_EE_BASE_IMAGE",
+    "DEFAULT_AWX_EE_IMAGE_NAME",
+    "DEFAULT_AWX_EE_IMAGE_TAG",
+    "DEFAULT_AWX_EE_PLATFORM",
+    "DEFAULT_AWX_PYTHON_CONSTRAINTS",
+    "DEFAULT_AWX_REF",
+    "DEFAULT_AWX_REPO",
+    "DEFAULT_AWX_UI_BUNDLE_EXPORT_PATH",
+    "DEFAULT_AWX_UI_BUNDLE_NAME",
+    "DEFAULT_AWX_UI_BUNDLE_TAG",
+    "DEFAULT_AWX_UI_DELIVERY",
+    "DEFAULT_AWX_UI_REF",
+    "DEFAULT_AWX_UI_REPO",
+    "DEFAULT_BASE_IMAGE",
+    "DEFAULT_COMPONENTS",
+    "DEFAULT_COMPONENTS_FILE",
+    "DEFAULT_IMAGE_NAME",
+    "DEFAULT_IMAGE_TAG",
+    "DEFAULT_PLATFORM",
+    "DEFAULT_RECEPTOR_IMAGE",
+    "DEFAULT_TOOLING_PYTHON",
+    "DEFAULT_TOOLING_UV_IMAGE",
+    "ImageSettings",
+    "PythonSettings",
+    "ToolingSettings",
+    "load_components_file",
+    "load_components_toml",
+]

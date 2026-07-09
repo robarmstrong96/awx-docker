@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from awx_docker.utilities import AwxUiDelivery, load_components_toml
+from awx_docker.config import AwxUiDelivery, load_components_toml
 
 ROOT = Path(__file__).resolve().parents[2]
 
