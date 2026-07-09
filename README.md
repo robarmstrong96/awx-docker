@@ -1,9 +1,8 @@
 # AWX Docker Proof-of-Concept Image Builder
 
-This repo builds an unofficial AWX image for local testing and CI experiments.
-It is not affiliated with Red Hat, Ansible, or the AWX project, and it is not a
-production install path. For real AWX lifecycle management, use the AWX
-Operator.
+This repo builds an unofficial AWX image for local testing and CI. It is not
+from Red Hat, Ansible, or the AWX project, and it is not meant for production.
+For normal AWX installs, use the AWX Operator.
 
 ## What It Builds
 
@@ -11,14 +10,13 @@ Operator.
 - `docker/awx-ui`: static AWX UI bundle for sideloaded UI runs.
 - `docker/awx-ee`: starter execution environment image for jobs.
 
-Dagger is the build surface. Just is only a short alias layer around common
-Dagger calls.
+Dagger does the real work. Just is there so the common commands are shorter.
 
 ## Requirements
 
 - Docker or another BuildKit-capable container builder
 - Dagger
-- Just, optional but convenient
+- Just if you want shorter commands
 - uv with Python 3.12 for local checks outside Dagger
 
 ## Commands
@@ -38,7 +36,7 @@ dagger call build-ee --source=.
 dagger call export-ee --source=. export --path=build/out/awx-ee.tar
 ```
 
-The same defaults are available through Just:
+Just runs the same default commands:
 
 ```bash
 just check
@@ -51,7 +49,7 @@ just build-ee
 just export-ee
 ```
 
-Use Dagger directly when overriding inputs:
+Use Dagger directly when you need to override something:
 
 ```bash
 dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
@@ -62,24 +60,22 @@ dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/ou
 
 ## Configuration
 
-Most defaults live in `config/components/components.toml`: upstream AWX, AWX UI,
-image tags, base images, platform, receptor, EE defaults, and local tooling.
+Most defaults live in `config/components/components.toml`: AWX refs, image
+names, base images, platform, receptor, EE defaults, and local tooling.
 
-AWX control-plane Python pins live in
-`config/awx/constraints/awx-python.yaml`. AWX already ships its own Python
-requirements, so only add pins there when this wrapper needs to force one of
+AWX Python pins live in `config/awx/constraints/awx-python.yaml`. AWX already
+has its own requirements, so leave this empty unless we need to force one of
 those packages to a specific version.
 
-The starter EE is defined in `docker/awx-ee/execution-environment.yml`.
-Collections go in `docker/awx-ee/requirements.yml`, extra Python packages go in
+The starter EE lives in `docker/awx-ee/execution-environment.yml`. Collections
+go in `docker/awx-ee/requirements.yml`, extra Python packages go in
 `docker/awx-ee/requirements.txt`, and extra RPM packages go in
 `docker/awx-ee/bindep.txt`.
 
 ## UI Delivery
 
-The default `embedded` mode builds the pinned AWX UI into the AWX image. For a
-runtime image that can accept a separately built UI bundle, export the AWX image
-with `sideloaded`:
+The default `embedded` mode puts the pinned AWX UI inside the AWX image. Use
+`sideloaded` when you want the AWX runtime image and UI bundle built separately:
 
 ```bash
 dagger call export \
@@ -96,7 +92,7 @@ dagger call export-ui --source=. export --path=build/out/awx-ui-static
 ```
 
 Nginx serves that directory for `/static`, `/locales`, and `/favicon.ico`. The
-AWX image does not copy or sync sideloaded assets during startup.
+AWX image will not copy the UI bundle into place for you at startup.
 
 ## Local Smoke Tests
 
@@ -118,9 +114,8 @@ podman pod logs -f awx-docker-example
 podman kube play --down config/examples/podman/pod.example.yaml --force
 ```
 
-Both examples need their `change-me` values replaced before use. Compose
-defaults to `http://localhost:8013`; the Podman pod defaults to
-`http://localhost:8014`.
+Replace the `change-me` values before starting either example. Compose defaults
+to `http://localhost:8013`; the Podman pod defaults to `http://localhost:8014`.
 
 Example browser snapshots from the Podman pod:
 
@@ -132,47 +127,44 @@ Example browser snapshots from the Podman pod:
 
 ### Upstream AWX is fetched during the build
 
-This wrapper intentionally stays thin. It does not vendor AWX source into this
-repo. The Docker build clones the configured upstream AWX ref, records the
-resolved commit in the image, and keeps source/license metadata under
-`/usr/share/licenses/awx-wrapper/`.
+We do not keep AWX source in this repo. The Docker build clones the AWX ref from
+`components.toml`, writes the resolved commit into the image, and keeps the
+source/license notes under `/usr/share/licenses/awx-wrapper/`.
 
 ### The Dockerfile still has defaults
 
-`config/components/components.toml` is the normal source of truth. Dagger reads
-it and passes the values as build args. The Dockerfile keeps matching `ARG`
-defaults so a plain `docker build` still has a workable fallback; Docker cannot
-read TOML before `ARG` and `FROM` are evaluated.
+`config/components/components.toml` is the main source of truth. Dagger reads it
+and passes those values as build args. The Dockerfile still has matching `ARG`
+defaults because plain `docker build` needs something to use before Docker can
+evaluate `FROM`.
 
 ### AWX UI is pinned separately
 
-Upstream AWX normally pulls `ansible-ui` while building UI assets. This wrapper
-checks out the configured UI ref first, so the UI build comes from a known tag
-or commit instead of a moving branch. The separate `docker/awx-ui` build exists
-so the same AWX runtime image can be paired with different UI bundles.
+AWX normally pulls `ansible-ui` while building the UI. We check out the UI ref
+first, so the UI comes from a known tag or commit instead of a moving branch.
+The separate `docker/awx-ui` build lets one AWX runtime image use different UI
+bundles.
 
 ### Job dependencies belong in the EE image
 
-The AWX web/task image should not be where playbook Ansible versions,
-collections, or job-only Python packages are managed. Put those in the
-execution environment image selected by the AWX job template. The included EE
-is just a starter: it pins `ansible-core==2.15.13` and
-`ansible-runner==2.4.0`, then installs the collections listed in
+Do not put playbook Ansible versions, collections, or job-only Python packages
+in the AWX web/task image. Put them in the EE image selected by the AWX job
+template. The included EE is only a starter: it pins `ansible-core==2.15.13`
+and `ansible-runner==2.4.0`, then installs the collections in
 `docker/awx-ee/requirements.yml`.
 
 ### The Podman example is a smoke test
 
-The AWX container is privileged because AWX starts nested Podman containers for
-execution environments. Rootless Podman can work when the host allows
-privileged rootless containers. Deeply nested dev setups, such as Podman inside
-Podman inside Docker, may need local storage or cgroup overrides that normal
-host Podman runs should not need.
+The AWX container is privileged because AWX starts Podman containers for job
+EEs. Rootless Podman can work if the host allows privileged rootless containers.
+Deeply nested dev setups, like Podman inside Podman inside Docker, may need
+local storage or cgroup tweaks that normal host Podman should not need.
 
 ### `verify` checks the wrapper contract
 
 `dagger call verify --source=.` builds the AWX image and runs
-`docker/awx/bin/verify-runtime-contract` inside it. That check confirms the
-copied AWX source, wrapper entrypoint, supervisor config, `awx-manage`, source
+`docker/awx/bin/verify-runtime-contract` inside it. It checks that the copied
+AWX source, wrapper entrypoint, supervisor config, `awx-manage`, source
 revision files, and license files are present.
 
 ## Defaults
@@ -191,6 +183,6 @@ revision files, and license files are present.
 
 ## Notices
 
-Wrapper files in this repository are licensed under Apache-2.0. Built images
-include upstream AWX source and retain upstream license and source revision
-metadata under `/usr/share/licenses/awx-wrapper/`.
+Wrapper files in this repo are Apache-2.0. Built images include upstream AWX
+source and keep upstream license/source metadata under
+`/usr/share/licenses/awx-wrapper/`.
