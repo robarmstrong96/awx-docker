@@ -46,7 +46,7 @@ This wrapper does not build those EE images yet.
 ## Build And Verify
 
 ```bash
-# Run formatting, lint, shell, workflow, and unit checks.
+# Run formatting, lint, shell, and unit checks.
 dagger call check --source=.
 
 # Resolve an AWX branch, tag, or commit to a concrete SHA.

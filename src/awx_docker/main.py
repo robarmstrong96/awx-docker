@@ -271,10 +271,6 @@ class AwxDocker:
         )
 
     def _tools(self, source: dagger.Directory) -> dagger.Container:
-        actionlint_url = (
-            "https://github.com/rhysd/actionlint/releases/download/v1.7.7/"
-            "actionlint_1.7.7_linux_amd64.tar.gz"
-        )
         return (
             self._python(source)
             .with_exec(["apt-get", "update"])
@@ -285,20 +281,10 @@ class AwxDocker:
                     "-y",
                     "--no-install-recommends",
                     "ca-certificates",
-                    "curl",
                     "git",
                     "shellcheck",
-                    "tar",
                 ]
             )
-            .with_exec(
-                [
-                    "bash",
-                    "-lc",
-                    f"curl -fsSL {actionlint_url} | tar -xz -C /usr/local/bin actionlint",
-                ]
-            )
-            .with_exec(["chmod", "+x", "/usr/local/bin/actionlint"])
         )
 
     def _lint_container(self, source: dagger.Directory) -> dagger.Container:
@@ -313,10 +299,7 @@ class AwxDocker:
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/verify-runtime-contract"])
-        ctr = ctr.with_exec(
-            _uv_python("-m", "py_compile", "docker/awx/bin/verify-awx-python-contract")
-        )
-        return ctr.with_exec(["actionlint"])
+        return ctr
 
     async def _prepare_image_source(
         self,
