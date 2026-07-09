@@ -96,7 +96,7 @@ AWX image will not copy the UI bundle into place for you at startup.
 
 ## Local Smoke Tests
 
-Compose example:
+Compose embedded example:
 
 ```bash
 cp config/examples/compose/.env.example config/examples/compose/.env
@@ -106,7 +106,20 @@ docker compose \
   up -d
 ```
 
-Podman pod example:
+Compose sideloaded example:
+
+```bash
+# In config/examples/compose/.env:
+# AWX_SIDELOADED_IMAGE=awx-devel:sideloaded
+# AWX_SIDELOADED_HTTP_PORT=8015
+# AWX_UI_STATIC_BUNDLE=../../../build/out/awx-ui-static
+docker compose \
+  --env-file config/examples/compose/.env \
+  -f config/examples/compose/compose.sideloaded.example.yaml \
+  up -d
+```
+
+Podman embedded example:
 
 ```bash
 podman kube play --replace config/examples/podman/pod.example.yaml
@@ -114,8 +127,19 @@ podman pod logs -f awx-docker-example
 podman kube play --down config/examples/podman/pod.example.yaml --force
 ```
 
-Replace the `change-me` values before starting either example. Compose defaults
-to `http://localhost:8013`; the Podman pod defaults to `http://localhost:8014`.
+Podman sideloaded example:
+
+```bash
+# First edit pod.sideloaded.example.yaml and replace the hostPath with a real
+# absolute path to build/out/awx-ui-static.
+podman kube play --replace config/examples/podman/pod.sideloaded.example.yaml
+podman pod logs -f awx-docker-sideloaded-example
+podman kube play --down config/examples/podman/pod.sideloaded.example.yaml --force
+```
+
+Replace the `change-me` values before starting any example. Embedded Compose
+uses `http://localhost:8013`, embedded Podman uses `http://localhost:8014`, and
+the sideloaded examples use `http://localhost:8015` unless you change the port.
 
 Example browser snapshots from the Podman pod:
 

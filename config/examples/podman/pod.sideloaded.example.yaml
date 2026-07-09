@@ -1,11 +1,11 @@
-# Embedded UI example.
+# Sideloaded UI example.
 #
-# This is the normal path. The AWX image already contains the UI files.
-# Use this when the image was built with AWX_UI_DELIVERY=embedded.
+# Use this when the AWX image was built with AWX_UI_DELIVERY=sideloaded.
+# Build/export the UI bundle first, then mount it into the AWX container below.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: awx-postgres-data
+  name: awx-sideloaded-postgres-data
 spec:
   accessModes:
     - ReadWriteOnce
@@ -16,7 +16,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: awx-docker-example
+  name: awx-docker-sideloaded-example
   labels:
     app.kubernetes.io/name: awx-docker
     app.kubernetes.io/part-of: awx-docker-example
@@ -46,9 +46,9 @@ spec:
           protocol: TCP
 
     - name: awx
-      # Embedded AWX container.
-      # No UI volume is needed here.
-      image: ghcr.io/robarmstrong96/awx-docker:production
+      # Sideloaded AWX container.
+      # The image does not contain UI files, so the static bundle is mounted.
+      image: awx-devel:sideloaded
       command:
         - /bin/bash
         - -lc
@@ -69,7 +69,7 @@ spec:
         - name: AWX_CACHE_URL
           value: redis://127.0.0.1:6379/1
         - name: AWX_CSRF_TRUSTED_ORIGIN
-          value: http://localhost:8014
+          value: http://localhost:8015
         - name: AWX_DB_HOST
           value: 127.0.0.1
         - name: AWX_DB_NAME
@@ -99,7 +99,7 @@ spec:
         - name: MAIN_NODE_TYPE
           value: hybrid
         - name: OS
-          value: "Operating System: podman-kube-example"
+          value: "Operating System: podman-kube-sideloaded-example"
         - name: RECEPTORCTL_SOCKET
           value: /var/run/awx-receptor/receptor.sock
         - name: RUN_MIGRATIONS
@@ -112,12 +112,23 @@ spec:
           value: /
       ports:
         - containerPort: 8013
-          hostPort: 8014
+          hostPort: 8015
           protocol: TCP
       securityContext:
         privileged: true
+      volumeMounts:
+        # Point this at the directory from:
+        # dagger call export-ui --source=. export --path=build/out/awx-ui-static
+        - name: awx-ui-static
+          mountPath: /var/lib/awx/public/static
+          readOnly: true
 
   volumes:
     - name: awx-postgres-data
       persistentVolumeClaim:
-        claimName: awx-postgres-data
+        claimName: awx-sideloaded-postgres-data
+    - name: awx-ui-static
+      hostPath:
+        # Replace this with a real absolute path on your host.
+        path: /absolute/path/to/build/out/awx-ui-static
+        type: Directory
