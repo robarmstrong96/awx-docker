@@ -24,7 +24,7 @@ def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
 def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     """Sideloaded UI mode should stay in shell helpers, not Dockerfile logic."""
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
-    dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
+    awx_build = (ROOT / "src/awx_docker/builds/awx.py").read_text()
     delivery_script = (ROOT / "docker/awx-ui/bin/prepare-delivery").read_text()
     deps_script = (ROOT / "docker/awx-ui/bin/install-build-deps").read_text()
     verifier = (ROOT / "docker/awx/bin/verify-runtime-contract").read_text()
@@ -34,7 +34,7 @@ def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     assert "RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps" in dockerfile
     assert "RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery" in dockerfile
     assert 'case "$AWX_UI_DELIVERY"' not in dockerfile
-    assert 'dagger.BuildArg("AWX_UI_DELIVERY", awx_ui_delivery)' in dagger_module
+    assert 'dagger.BuildArg("AWX_UI_DELIVERY", awx_ui_delivery)' in awx_build
     assert "sideloaded)" in delivery_script
     assert "sideloaded)" in deps_script
     assert "sideloaded)" in verifier
@@ -94,12 +94,13 @@ def test_awx_ee_definition_pins_core_and_runner_once() -> None:
 def test_dagger_exposes_ui_and_ee_builds() -> None:
     """The Dagger API should expose separate UI and EE build/export calls."""
     dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
+    ee_build = (ROOT / "src/awx_docker/builds/awx_ee.py").read_text()
 
     assert "async def build_ui(" in dagger_module
     assert "async def export_ui(" in dagger_module
     assert "async def build_ee(" in dagger_module
     assert "async def export_ee(" in dagger_module
-    assert "ansible-builder" in dagger_module
+    assert "ansible-builder" in ee_build
 
 
 def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
