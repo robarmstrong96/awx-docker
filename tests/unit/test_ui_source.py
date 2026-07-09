@@ -1,6 +1,8 @@
 """Static tests for Docker build wiring and small shell helpers."""
 
+import ast
 import subprocess
+from enum import StrEnum
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,18 @@ from awx_docker.config import AwxUiDelivery
 from awx_docker.utilities.file_util import load_components_toml
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class PublicBuildMethod(StrEnum):
+    """Public Dagger methods that build, verify, or export artifacts."""
+
+    BUILD = "build"
+    VERIFY = "verify"
+    EXPORT = "export"
+    BUILD_UI = "build_ui"
+    EXPORT_UI = "export_ui"
+    BUILD_EE = "build_ee"
+    EXPORT_EE = "export_ee"
 
 
 def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
@@ -101,6 +115,20 @@ def test_dagger_exposes_ui_and_ee_builds() -> None:
     assert "async def build_ee(" in dagger_module
     assert "async def export_ee(" in dagger_module
     assert "ansible-builder" in ee_build
+
+
+def test_dagger_public_build_methods_stay_small() -> None:
+    """Build configuration should stay in the component manifest, not signatures."""
+    dagger_module = ast.parse((ROOT / "src/awx_docker/main.py").read_text())
+    public_build_methods = {method.value for method in PublicBuildMethod}
+    methods = {
+        node.name: node
+        for node in ast.walk(dagger_module)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name in public_build_methods
+    }
+
+    assert public_build_methods == methods.keys()
+    assert all(len(method.args.args) <= 5 for method in methods.values())
 
 
 def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:

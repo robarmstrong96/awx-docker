@@ -49,14 +49,15 @@ just build-ee
 just export-ee
 ```
 
-Use Dagger directly when you need to override something:
+Use Dagger directly for the few runtime-only options:
 
 ```bash
-dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 dagger call export --source=. --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
-dagger call export-ui --source=. --awx-ui-ref=v2.4.313 export --path=build/out/awx-ui-static
 dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/out/awx-ee.tar
 ```
+
+Edit `config/components/components.toml` for version and image choices like AWX
+refs, UI refs, base images, platforms, receptor, and EE defaults.
 
 ## Configuration
 
@@ -80,10 +81,12 @@ The default `embedded` mode puts the pinned AWX UI inside the AWX image. Use
 ```bash
 dagger call export \
   --source=. \
-  --awx-ui-delivery=sideloaded \
   --image-ref=awx-devel:sideloaded \
   export --path=build/out/awx-devel-sideloaded.tar
 ```
+
+Set `awx_ui.delivery = "sideloaded"` in `config/components/components.toml`
+before building that image.
 
 Then build the UI bundle and mount it at `/var/lib/awx/public/static`:
 
@@ -158,9 +161,9 @@ source/license notes under `/usr/share/licenses/awx-wrapper/`.
 ### The Dockerfile still has defaults
 
 `config/components/components.toml` is the main source of truth. Dagger reads it
-and passes those values as build args. The Dockerfile still has matching `ARG`
-defaults because plain `docker build` needs something to use before Docker can
-evaluate `FROM`.
+and passes those values as build args instead of exposing a giant pile of
+function parameters. The Dockerfile still has matching `ARG` defaults because
+plain `docker build` needs something to use before Docker can evaluate `FROM`.
 
 ### AWX UI is pinned separately
 
