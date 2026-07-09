@@ -7,7 +7,18 @@ from awx_docker.utilities.load_configuration import DEFAULT_TOOLING_UV_IMAGE
 
 
 def python_container(source: dagger.Directory) -> dagger.Container:
-    """Create the Python tooling container used by Dagger tasks."""
+    """Create the Python tooling container used by Dagger tasks.
+
+    Parameters
+    ----------
+    source : dagger.Directory
+        Repository source tree mounted into Dagger.
+
+    Returns
+    -------
+    dagger.Container
+        Container with Python dependencies installed by uv.
+    """
     return (
         dag.container()
         .from_(DEFAULT_TOOLING_UV_IMAGE)
@@ -29,7 +40,18 @@ def python_container(source: dagger.Directory) -> dagger.Container:
 
 
 def tools_container(source: dagger.Directory) -> dagger.Container:
-    """Create the lint container with shell tools installed."""
+    """Create the lint container with shell tools installed.
+
+    Parameters
+    ----------
+    source : dagger.Directory
+        Repository source tree mounted into Dagger.
+
+    Returns
+    -------
+    dagger.Container
+        Python tooling container with ShellCheck available.
+    """
     return (
         python_container(source)
         .with_exec(["apt-get", "update"])

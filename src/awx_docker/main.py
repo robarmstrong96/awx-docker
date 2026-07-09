@@ -53,7 +53,7 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
 
         Returns
@@ -69,7 +69,7 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
 
         Returns
@@ -85,7 +85,7 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
 
         Returns
@@ -101,7 +101,7 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
 
         Returns
@@ -122,11 +122,11 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository to query.
-        upstream_ref
+        upstream_ref : str
             Branch, tag, or commit SHA to resolve.
 
         Returns
@@ -158,33 +158,33 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository used for the control-plane source.
-        upstream_ref
+        upstream_ref : str
             Requested AWX branch, tag, or commit SHA.
-        awx_ui_repository
+        awx_ui_repository : str
             AWX UI Git repository used for static assets.
-        awx_ui_ref
+        awx_ui_ref : str
             Requested AWX UI branch, tag, or commit SHA.
-        awx_ui_delivery
+        awx_ui_delivery : str
             UI delivery mode, either ``embedded`` or ``sideloaded``.
-        resolved_revision
+        resolved_revision : str
             Optional pre-resolved AWX commit SHA.
-        image_name
+        image_name : str
             Name to record on the built image.
-        image_tag
+        image_tag : str
             Tag to record on the built image.
-        platform
+        platform : str
             Target container platform.
-        base_image
+        base_image : str
             CentOS Stream base image used by the AWX Dockerfile.
-        receptor_image
+        receptor_image : str
             Receptor image copied into the AWX image.
-        python_constraints
+        python_constraints : str
             Constraint file name under ``config/awx/constraints``.
-        ssh_auth_sock
+        ssh_auth_sock : str
             Optional SSH agent socket used for private Git access.
 
         Returns
@@ -236,33 +236,33 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository used for the control-plane source.
-        upstream_ref
+        upstream_ref : str
             Requested AWX branch, tag, or commit SHA.
-        awx_ui_repository
+        awx_ui_repository : str
             AWX UI Git repository used for static assets.
-        awx_ui_ref
+        awx_ui_ref : str
             Requested AWX UI branch, tag, or commit SHA.
-        awx_ui_delivery
+        awx_ui_delivery : str
             UI delivery mode, either ``embedded`` or ``sideloaded``.
-        resolved_revision
+        resolved_revision : str
             Optional pre-resolved AWX commit SHA.
-        image_name
+        image_name : str
             Name to record on the built image.
-        image_tag
+        image_tag : str
             Tag to record on the built image.
-        platform
+        platform : str
             Target container platform.
-        base_image
+        base_image : str
             CentOS Stream base image used by the AWX Dockerfile.
-        receptor_image
+        receptor_image : str
             Receptor image copied into the AWX image.
-        python_constraints
+        python_constraints : str
             Constraint file name under ``config/awx/constraints``.
-        ssh_auth_sock
+        ssh_auth_sock : str
             Optional SSH agent socket used for private Git access.
 
         Returns
@@ -309,31 +309,31 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository used for the control-plane source.
-        upstream_ref
+        upstream_ref : str
             Requested AWX branch, tag, or commit SHA.
-        awx_ui_repository
+        awx_ui_repository : str
             AWX UI Git repository used for static assets.
-        awx_ui_ref
+        awx_ui_ref : str
             Requested AWX UI branch, tag, or commit SHA.
-        awx_ui_delivery
+        awx_ui_delivery : str
             UI delivery mode, either ``embedded`` or ``sideloaded``.
-        resolved_revision
+        resolved_revision : str
             Optional pre-resolved AWX commit SHA.
-        image_ref
+        image_ref : str
             Image reference to apply to the exported tarball.
-        platform
+        platform : str
             Target container platform.
-        base_image
+        base_image : str
             CentOS Stream base image used by the AWX Dockerfile.
-        receptor_image
+        receptor_image : str
             Receptor image copied into the AWX image.
-        python_constraints
+        python_constraints : str
             Constraint file name under ``config/awx/constraints``.
-        ssh_auth_sock
+        ssh_auth_sock : str
             Optional SSH agent socket used for private Git access.
 
         Returns
@@ -378,25 +378,25 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository used for the control-plane source.
-        upstream_ref
+        upstream_ref : str
             Requested AWX branch, tag, or commit SHA.
-        awx_ui_repository
+        awx_ui_repository : str
             AWX UI Git repository used for static assets.
-        awx_ui_ref
+        awx_ui_ref : str
             Requested AWX UI branch, tag, or commit SHA.
-        bundle_name
+        bundle_name : str
             Name to record on the UI bundle image.
-        bundle_tag
+        bundle_tag : str
             Tag to record on the UI bundle image.
-        resolved_revision
+        resolved_revision : str
             Optional pre-resolved AWX commit SHA.
-        platform
+        platform : str
             Target container platform.
-        base_image
+        base_image : str
             CentOS Stream base image used by the UI Dockerfile.
 
         Returns
@@ -441,25 +441,25 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        upstream_repository
+        upstream_repository : str
             AWX Git repository used for the control-plane source.
-        upstream_ref
+        upstream_ref : str
             Requested AWX branch, tag, or commit SHA.
-        awx_ui_repository
+        awx_ui_repository : str
             AWX UI Git repository used for static assets.
-        awx_ui_ref
+        awx_ui_ref : str
             Requested AWX UI branch, tag, or commit SHA.
-        bundle_name
+        bundle_name : str
             Name to record on the UI bundle image.
-        bundle_tag
+        bundle_tag : str
             Tag to record on the UI bundle image.
-        resolved_revision
+        resolved_revision : str
             Optional pre-resolved AWX commit SHA.
-        platform
+        platform : str
             Target container platform.
-        base_image
+        base_image : str
             CentOS Stream base image used by the UI Dockerfile.
 
         Returns
@@ -493,15 +493,15 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        image_name
+        image_name : str
             Name to record on the EE image.
-        image_tag
+        image_tag : str
             Tag to record on the EE image.
-        platform
+        platform : str
             Target container platform.
-        ee_base_image
+        ee_base_image : str
             Base execution environment image used by Ansible Builder.
 
         Returns
@@ -532,13 +532,13 @@ class AwxDocker:
 
         Parameters
         ----------
-        source
+        source : dagger.Directory
             Repository source tree mounted into Dagger.
-        image_ref
+        image_ref : str
             Image reference to apply to the exported tarball.
-        platform
+        platform : str
             Target container platform.
-        ee_base_image
+        ee_base_image : str
             Base execution environment image used by Ansible Builder.
 
         Returns
@@ -566,11 +566,11 @@ async def resolve_upstream_revision(
 
     Parameters
     ----------
-    source
+    source : dagger.Directory
         Repository source tree mounted into Dagger.
-    upstream_repository
+    upstream_repository : str
         AWX Git repository to query.
-    upstream_ref
+    upstream_ref : str
         Branch, tag, or commit SHA to resolve.
 
     Returns

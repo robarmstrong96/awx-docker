@@ -13,25 +13,25 @@ class AwxUiBundleBuildRequest:
 
     Attributes
     ----------
-    source
+    source : dagger.Directory
         Repository source tree mounted into Dagger.
-    awx_repo
+    awx_repo : str
         AWX Git repository used for the control-plane source.
-    awx_ref
+    awx_ref : str
         Requested AWX branch, tag, or commit SHA.
-    resolved_sha
+    resolved_sha : str
         Concrete AWX commit SHA passed into the Docker build.
-    awx_ui_repo
+    awx_ui_repo : str
         AWX UI Git repository used for static assets.
-    awx_ui_ref
+    awx_ui_ref : str
         Requested AWX UI branch, tag, or commit SHA.
-    bundle_name
+    bundle_name : str
         Name to record on the UI bundle image.
-    bundle_tag
+    bundle_tag : str
         Tag to record on the UI bundle image.
-    platform
+    platform : str
         Target container platform.
-    base_image
+    base_image : str
         CentOS Stream base image used by the UI Dockerfile.
     """
 
@@ -52,7 +52,7 @@ def build_awx_ui_bundle(request: AwxUiBundleBuildRequest) -> dagger.Container:
 
     Parameters
     ----------
-    request
+    request : AwxUiBundleBuildRequest
         UI bundle build inputs.
 
     Returns

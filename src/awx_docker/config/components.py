@@ -13,7 +13,27 @@ from awx_docker.config.tooling import ToolingSettings
 
 @dataclass(frozen=True)
 class Components:
-    """Typed view of config/components/components.toml."""
+    """Typed view of ``config/components/components.toml``.
+
+    Attributes
+    ----------
+    schema_version : int
+        Manifest schema version.
+    awx : AwxSource
+        AWX source settings.
+    awx_ui : AwxUiSource
+        AWX UI source and delivery settings.
+    awx_ui_bundle : AwxUiBundleSettings
+        AWX UI bundle export settings.
+    awx_ee : AwxEeSettings
+        AWX execution environment settings.
+    images : ImageSettings
+        AWX control-plane image settings.
+    python : PythonSettings
+        Python dependency settings.
+    tooling : ToolingSettings
+        Local tooling settings used by checks and builds.
+    """
 
     schema_version: int
     awx: AwxSource

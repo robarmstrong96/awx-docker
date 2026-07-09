@@ -14,33 +14,33 @@ class AwxImageBuildRequest:
 
     Attributes
     ----------
-    source
+    source : dagger.Directory
         Repository source tree mounted into Dagger.
-    awx_repo
+    awx_repo : str
         AWX Git repository used for the control-plane source.
-    awx_ref
+    awx_ref : str
         Requested AWX branch, tag, or commit SHA.
-    resolved_sha
+    resolved_sha : str
         Concrete AWX commit SHA passed into the Docker build.
-    awx_ui_repo
+    awx_ui_repo : str
         AWX UI Git repository used for static assets.
-    awx_ui_ref
+    awx_ui_ref : str
         Requested AWX UI branch, tag, or commit SHA.
-    awx_ui_delivery
+    awx_ui_delivery : str
         UI delivery mode, either ``embedded`` or ``sideloaded``.
-    image_name
+    image_name : str
         Name to record on the built image.
-    image_tag
+    image_tag : str
         Tag to record on the built image.
-    platform
+    platform : str
         Target container platform.
-    base_image
+    base_image : str
         CentOS Stream base image used by the AWX Dockerfile.
-    receptor_image
+    receptor_image : str
         Receptor image copied into the AWX image.
-    python_constraints
+    python_constraints : str
         Constraint file name under ``config/awx/constraints``.
-    ssh_auth_sock
+    ssh_auth_sock : str
         Optional SSH agent socket used for private Git access.
     """
 
@@ -65,7 +65,7 @@ def build_awx_image(request: AwxImageBuildRequest) -> dagger.Container:
 
     Parameters
     ----------
-    request
+    request : AwxImageBuildRequest
         AWX image build inputs.
 
     Returns
@@ -114,9 +114,9 @@ def verify_awx_image(image: dagger.Container, image_ref: str) -> dagger.Containe
 
     Parameters
     ----------
-    image
+    image : dagger.Container
         AWX container to verify.
-    image_ref
+    image_ref : str
         Image reference passed to the runtime contract script.
 
     Returns

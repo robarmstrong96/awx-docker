@@ -11,15 +11,15 @@ class AwxEeImageBuildRequest:
 
     Attributes
     ----------
-    context
+    context : dagger.Directory
         Ansible Builder context directory.
-    image_name
+    image_name : str
         Name to record on the EE image.
-    image_tag
+    image_tag : str
         Tag to record on the EE image.
-    platform
+    platform : str
         Target container platform.
-    ee_base_image
+    ee_base_image : str
         Base execution environment image used by Ansible Builder.
     """
 
@@ -35,7 +35,7 @@ async def build_ee_context(tooling: dagger.Container) -> dagger.Directory:
 
     Parameters
     ----------
-    tooling
+    tooling : dagger.Container
         Python tooling container with Ansible Builder installed.
 
     Returns
@@ -62,7 +62,7 @@ def build_ee_image(request: AwxEeImageBuildRequest) -> dagger.Container:
 
     Parameters
     ----------
-    request
+    request : AwxEeImageBuildRequest
         EE image build inputs.
 
     Returns
@@ -91,7 +91,7 @@ def verify_ee_image(image: dagger.Container) -> dagger.Container:
 
     Parameters
     ----------
-    image
+    image : dagger.Container
         AWX execution environment container to verify.
 
     Returns

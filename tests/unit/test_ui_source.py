@@ -124,7 +124,13 @@ def test_dockerfile_copies_awx_package_repos_from_config() -> None:
 
 
 def test_awx_python_yaml_constraints_render_to_pip_constraints(tmp_path: Path) -> None:
-    """The Bash renderer should turn the YAML list into pip constraint lines."""
+    """The Bash renderer should turn the YAML list into pip constraint lines.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    """
     source = tmp_path / "constraints.yaml"
     target = tmp_path / "constraints.txt"
     source.write_text(

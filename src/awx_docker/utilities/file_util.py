@@ -18,12 +18,48 @@ from awx_docker.config.tooling import ToolingSettings
 
 
 def load_components_file(path: Path) -> Components:
-    """Read and parse a component manifest from disk."""
+    """Read and parse a component manifest from disk.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to a TOML component manifest.
+
+    Returns
+    -------
+    Components
+        Parsed component settings.
+
+    Raises
+    ------
+    ValueError
+        Raised when the manifest has an unsupported schema or invalid fields.
+    tomllib.TOMLDecodeError
+        Raised when the file is not valid TOML.
+    """
     return load_components_toml(path.read_text())
 
 
 def load_components_toml(text: str) -> Components:
-    """Parse component TOML into typed settings with simple validation."""
+    """Parse component TOML into typed settings with simple validation.
+
+    Parameters
+    ----------
+    text : str
+        TOML component manifest content.
+
+    Returns
+    -------
+    Components
+        Parsed component settings.
+
+    Raises
+    ------
+    ValueError
+        Raised when the manifest has an unsupported schema or invalid fields.
+    tomllib.TOMLDecodeError
+        Raised when ``text`` is not valid TOML.
+    """
     data = tomllib.loads(text)
     schema_version = _int(data, "schema_version")
     if schema_version != 1:
@@ -77,7 +113,25 @@ def load_components_toml(text: str) -> Components:
 
 
 def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
-    """Read a required TOML table."""
+    """Read a required TOML table.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        Parent TOML table.
+    key : str
+        Field name to read from ``data``.
+
+    Returns
+    -------
+    dict[str, Any]
+        Required child table.
+
+    Raises
+    ------
+    ValueError
+        Raised when the field is missing or is not a table.
+    """
     value = data.get(key)
     if not isinstance(value, dict):
         raise ValueError(f"components field {key!r} must be a table")
@@ -85,7 +139,25 @@ def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _string(data: dict[str, Any], key: str) -> str:
-    """Read a required non-empty TOML string."""
+    """Read a required non-empty TOML string.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        TOML table.
+    key : str
+        Field name to read from ``data``.
+
+    Returns
+    -------
+    str
+        Required string value.
+
+    Raises
+    ------
+    ValueError
+        Raised when the field is missing, empty, or not a string.
+    """
     value = data.get(key)
     if not isinstance(value, str) or not value:
         raise ValueError(f"components field {key!r} must be a non-empty string")
@@ -93,7 +165,27 @@ def _string(data: dict[str, Any], key: str) -> str:
 
 
 def _enum[T: Enum](data: dict[str, Any], key: str, enum_type: type[T]) -> T:
-    """Read a required string as an enum value."""
+    """Read a required string as an enum value.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        TOML table.
+    key : str
+        Field name to read from ``data``.
+    enum_type : type[T]
+        Enum type used to validate the string.
+
+    Returns
+    -------
+    T
+        Parsed enum member.
+
+    Raises
+    ------
+    ValueError
+        Raised when the field does not match an enum value.
+    """
     value = _string(data, key)
     try:
         return enum_type(value)
@@ -103,7 +195,25 @@ def _enum[T: Enum](data: dict[str, Any], key: str, enum_type: type[T]) -> T:
 
 
 def _int(data: dict[str, Any], key: str) -> int:
-    """Read a required TOML integer."""
+    """Read a required TOML integer.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        TOML table.
+    key : str
+        Field name to read from ``data``.
+
+    Returns
+    -------
+    int
+        Required integer value.
+
+    Raises
+    ------
+    ValueError
+        Raised when the field is missing or is not an integer.
+    """
     value = data.get(key)
     if not isinstance(value, int):
         raise ValueError(f"components field {key!r} must be an integer")

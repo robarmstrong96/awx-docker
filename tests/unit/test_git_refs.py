@@ -7,7 +7,20 @@ from awx_docker.git_refs import resolve_ref
 
 
 def git(repo: Path, *args: str) -> str:
-    """Run a Git command in a test repository and return stdout."""
+    """Run a Git command in a test repository.
+
+    Parameters
+    ----------
+    repo : pathlib.Path
+        Repository directory where the command should run.
+    *args : str
+        Git arguments passed after the ``git`` executable.
+
+    Returns
+    -------
+    str
+        Stripped command stdout.
+    """
     result = subprocess.run(
         ["git", *args],
         cwd=repo,
@@ -25,7 +38,13 @@ def test_resolve_ref_returns_full_sha_without_network() -> None:
 
 
 def test_resolve_ref_prefers_peeled_annotated_tag(tmp_path: Path) -> None:
-    """Annotated tags should resolve to the commit, not the tag object."""
+    """Annotated tags should resolve to the commit, not the tag object.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    """
     repo = tmp_path / "repo"
     repo.mkdir()
 
