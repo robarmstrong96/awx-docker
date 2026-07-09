@@ -22,6 +22,11 @@ Tracked defaults live in `components.toml`. That file pins the upstream AWX
 source, AWX UI source, base image, receptor image, local image tag, platform,
 and the dependency control files this wrapper owns.
 
+Dagger reads those defaults through the Python config layer and passes them to
+the Dockerfile as build arguments. The Dockerfile keeps matching `ARG` defaults
+only as a direct `docker build` fallback; it cannot source `components.toml`
+before `ARG` and `FROM` are evaluated.
+
 Use `docker/awx/constraints/awx-python.yaml` for intentional AWX control-plane
 Python overrides. Upstream AWX requirements remain the primary dependency
 contract; exact pins in this constraints file either constrain upstream

@@ -3,6 +3,9 @@
 
 # ----- Build arguments --------------------------------------------------------
 
+# Dagger passes these from components.toml. The defaults below are only a
+# direct docker-build fallback, and unit tests keep them aligned with the
+# manifest because Dockerfiles cannot source TOML before ARG/FROM evaluation.
 ARG CENTOS_STREAM_IMAGE=quay.io/centos/centos:stream9
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel

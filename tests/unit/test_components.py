@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,11 @@ from awx_docker.config import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def dockerfile_arg_defaults() -> dict[str, str]:
+    dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
+    return dict(re.findall(r"^ARG ([A-Z0-9_]+)=([^\n]+)$", dockerfile, flags=re.MULTILINE))
+
+
 def test_components_manifest_is_default_version_source() -> None:
     components = load_components_file(ROOT / "components.toml")
 
@@ -32,6 +38,20 @@ def test_components_manifest_is_default_version_source() -> None:
     assert DEFAULT_IMAGE_TAG == components.images.tag
     assert DEFAULT_PLATFORM == components.images.platform
     assert DEFAULT_AWX_PYTHON_CONSTRAINTS == components.python.constraints
+
+
+def test_dockerfile_fallback_args_match_components_manifest() -> None:
+    components = load_components_file(ROOT / "components.toml")
+    args = dockerfile_arg_defaults()
+
+    assert args["CENTOS_STREAM_IMAGE"] == components.images.base
+    assert args["AWX_REPO"] == components.awx.repository
+    assert args["AWX_REF"] == components.awx.ref
+    assert args["AWX_REQUESTED_REF"] == components.awx.ref
+    assert args["AWX_UI_REPO"] == components.awx_ui.repository
+    assert args["AWX_UI_REF"] == components.awx_ui.ref
+    assert args["RECEPTOR_IMAGE"] == components.images.receptor
+    assert args["AWX_PYTHON_CONSTRAINTS"] == components.python.constraints
 
 
 def test_components_manifest_rejects_unsupported_schema() -> None:
