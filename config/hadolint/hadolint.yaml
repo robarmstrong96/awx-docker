@@ -1,0 +1,27 @@
+# Hadolint rule reference:
+# https://github.com/hadolint/hadolint#rules
+ignored:
+  # DL3002: Last USER should not be root.
+  # This image needs root at startup to prepare AWX runtime files and nested
+  # Podman state before handing off to AWX.
+  - DL3002
+
+  # DL3006: Always tag image versions explicitly.
+  # Base and receptor images are passed as build args from the component
+  # manifest, so Hadolint cannot see the resolved refs in every build path.
+  - DL3006
+
+  # DL3013: Pin versions in pip.
+  # The runtime tool installs follow upstream AWX's dev image pattern, while AWX
+  # dependency pins come through upstream requirements plus our constraints file.
+  - DL3013
+
+  # DL3041: Pin versions in dnf install.
+  # CentOS Stream package versions move with the base image repositories; this
+  # proof-of-concept builder does not maintain RPM version locks.
+  - DL3041
+
+  # DL3059: Multiple consecutive RUN instructions.
+  # The Dockerfile keeps separate RUN steps where they make build stages easier
+  # to read and cache while we are iterating on the wrapper.
+  - DL3059

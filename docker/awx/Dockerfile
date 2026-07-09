@@ -3,9 +3,9 @@
 
 # ----- Build arguments --------------------------------------------------------
 
-# Dagger normally passes these from components.toml. Keep the defaults here for
-# direct docker builds; tests make sure they stay in sync because Docker cannot
-# read TOML before ARG/FROM evaluation.
+# Dagger normally passes these from config/components/components.toml. Keep the
+# defaults here for direct docker builds; Docker cannot read TOML before
+# ARG/FROM evaluation.
 ARG CENTOS_STREAM_IMAGE=quay.io/centos/centos:stream9
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel

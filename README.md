@@ -14,18 +14,20 @@ upstream AWX during the build, assembles the pieces the dev startup path needs,
 and keeps source and license metadata in the image.
 
 Dagger is the main command surface. Just is only a small convenience layer for
-common local commands.
+common local commands. Tool files that are discovered by convention, such as
+`dagger.json`, `pyproject.toml`, `uv.lock`, and `.dockerignore`, stay at the
+repo root so the normal commands keep working.
 
 ## Component Versions
 
-The default versions live in `components.toml`: AWX, AWX UI, the base image,
-receptor, the local image tag, the platform, and the small dependency files this
-wrapper owns.
+The default versions live in `config/components/components.toml`: AWX, AWX UI,
+the base image, receptor, the local image tag, the platform, and the small
+dependency files this wrapper owns.
 
 Dagger reads that file through the Python config layer and passes the values to
 the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
 defaults so a plain `docker build` has a reasonable fallback. It cannot read
-`components.toml` itself before `ARG` and `FROM` are evaluated.
+the component manifest itself before `ARG` and `FROM` are evaluated.
 
 Use `docker/awx/constraints/awx-python.yaml` for intentional AWX control-plane
 Python overrides. Upstream AWX requirements are still the baseline. Pins in
@@ -63,21 +65,24 @@ dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image
 ```
 
 The AWX UI source is pinned separately from the AWX server source. The default
-lives in `components.toml`, and `--awx-ui-ref` can still override it for one
-Dagger call. Upstream AWX normally clones `ansible-ui` from `main` while
-building UI assets; this wrapper checks out the configured UI ref first so
-`make ui` builds from a known tag or commit instead of a moving branch.
+lives in `config/components/components.toml`, and `--awx-ui-ref` can still
+override it for one Dagger call. Upstream AWX normally clones `ansible-ui` from
+`main` while building UI assets; this wrapper checks out the configured UI ref
+first so `make ui` builds from a known tag or commit instead of a moving branch.
 
 ## Example Compose Smoke Test
 
-`compose.example.yaml` starts this image with local Postgres and Redis
-containers. It is intended for a quick smoke test of a published or locally
-built image, not as a supported production deployment.
+`config/examples/compose/compose.example.yaml` starts this image with local
+Postgres and Redis containers. It is intended for a quick smoke test of a
+published or locally built image, not as a supported production deployment.
 
 ```bash
-cp .env.example .env
+cp config/examples/compose/.env.example config/examples/compose/.env
 # Edit .env and replace every change-me value before starting the stack.
-docker compose --env-file .env -f compose.example.yaml up -d
+docker compose \
+  --env-file config/examples/compose/.env \
+  -f config/examples/compose/compose.example.yaml \
+  up -d
 ```
 
 The example defaults to `ghcr.io/robarmstrong96/awx-docker:production`. To test a
@@ -85,19 +90,19 @@ local export or another registry tag, set `AWX_IMAGE` in `.env`.
 
 ## Example Podman Pod Smoke Test
 
-`pod.example.yaml` starts the same basic smoke-test stack through
-`podman kube play`: one pod with Postgres, Redis, and the AWX container. It uses
-loopback addresses between containers because containers in a pod share one
-network namespace.
+`config/examples/podman/pod.example.yaml` starts the same basic smoke-test
+stack through `podman kube play`: one pod with Postgres, Redis, and the AWX
+container. It uses loopback addresses between containers because containers in a
+pod share one network namespace.
 
 Edit the `change-me` values in the file before use. The example publishes AWX
 on `http://localhost:8014` so it can run next to the Compose example, which
 defaults to port `8013`.
 
 ```bash
-podman kube play --replace pod.example.yaml
+podman kube play --replace config/examples/podman/pod.example.yaml
 podman pod logs -f awx-docker-example
-podman kube play --down pod.example.yaml --force
+podman kube play --down config/examples/podman/pod.example.yaml --force
 ```
 
 The AWX container is privileged because it starts nested Podman containers for
@@ -142,7 +147,7 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 
 ## Defaults
 
-- Component manifest: `components.toml`
+- Component manifest: `config/components/components.toml`
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
 - Upstream AWX ref: `devel`
 - Upstream AWX UI repo: `https://github.com/ansible/ansible-ui.git`

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from awx_docker.components import load_components_file
 
-DEFAULT_COMPONENTS_FILE = "components.toml"
+DEFAULT_COMPONENTS_FILE = "config/components/components.toml"
 DEFAULT_COMPONENTS = load_components_file(
     Path(__file__).resolve().parents[2] / DEFAULT_COMPONENTS_FILE
 )
