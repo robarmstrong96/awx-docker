@@ -3,11 +3,11 @@
 import argparse
 import os
 
-from awx_docker.config import (
+from awx_docker.git_refs import resolve_ref
+from awx_docker.utilities.load_configuration import (
     DEFAULT_AWX_REF,
     DEFAULT_AWX_REPO,
 )
-from awx_docker.git_refs import resolve_ref
 
 
 def cmd_resolve_ref(args: argparse.Namespace) -> int:

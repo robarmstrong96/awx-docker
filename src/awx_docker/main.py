@@ -3,7 +3,7 @@
 import dagger
 from dagger import dag, function, object_type
 
-from awx_docker.config import (
+from awx_docker.utilities.load_configuration import (
     DEFAULT_AWX_EE_BASE_IMAGE,
     DEFAULT_AWX_EE_IMAGE_NAME,
     DEFAULT_AWX_EE_IMAGE_TAG,
