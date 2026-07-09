@@ -34,7 +34,7 @@ def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     assert "RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps" in dockerfile
     assert "RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery" in dockerfile
     assert 'case "$AWX_UI_DELIVERY"' not in dockerfile
-    assert 'dagger.BuildArg("AWX_UI_DELIVERY", awx_ui_delivery)' in awx_build
+    assert 'dagger.BuildArg("AWX_UI_DELIVERY", request.awx_ui_delivery)' in awx_build
     assert "sideloaded)" in delivery_script
     assert "sideloaded)" in deps_script
     assert "sideloaded)" in verifier
