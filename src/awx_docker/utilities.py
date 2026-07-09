@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any
+
+
+class AwxUiDelivery(StrEnum):
+    """Supported ways to ship AWX UI static files."""
+
+    EMBEDDED = "embedded"
+    SIDELOADED = "sideloaded"
 
 
 @dataclass(frozen=True)
@@ -22,7 +30,7 @@ class AwxUiSource:
 
     repository: str
     ref: str
-    delivery: str
+    delivery: AwxUiDelivery
 
 
 @dataclass(frozen=True)
@@ -113,7 +121,7 @@ def load_components_toml(text: str) -> Components:
         awx_ui=AwxUiSource(
             repository=_string(awx_ui, "repository"),
             ref=_string(awx_ui, "ref"),
-            delivery=_choice(awx_ui, "delivery", {"embedded", "sideloaded"}),
+            delivery=_enum(awx_ui, "delivery", AwxUiDelivery),
         ),
         awx_ui_bundle=AwxUiBundleSettings(
             name=_string(awx_ui_bundle, "name"),
@@ -159,13 +167,14 @@ def _string(data: dict[str, Any], key: str) -> str:
     return value
 
 
-def _choice(data: dict[str, Any], key: str, choices: set[str]) -> str:
-    """Read a required string that must be one of a known set."""
+def _enum[T: Enum](data: dict[str, Any], key: str, enum_type: type[T]) -> T:
+    """Read a required string as an enum value."""
     value = _string(data, key)
-    if value not in choices:
-        expected = ", ".join(sorted(choices))
-        raise ValueError(f"components field {key!r} must be one of: {expected}")
-    return value
+    try:
+        return enum_type(value)
+    except ValueError as exc:
+        expected = ", ".join(item.value for item in enum_type)
+        raise ValueError(f"components field {key!r} must be one of: {expected}") from exc
 
 
 def _int(data: dict[str, Any], key: str) -> int:

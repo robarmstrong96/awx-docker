@@ -3,6 +3,10 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
+from awx_docker.utilities import AwxUiDelivery, load_components_toml
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -33,6 +37,21 @@ def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     assert "sideloaded)" in delivery_script
     assert "sideloaded)" in deps_script
     assert "sideloaded)" in verifier
+
+
+def test_component_parser_uses_ui_delivery_enum() -> None:
+    """The component manifest should parse UI delivery as an enum."""
+    components = load_components_toml((ROOT / "config/components/components.toml").read_text())
+
+    assert components.awx_ui.delivery is AwxUiDelivery.EMBEDDED
+
+
+def test_component_parser_rejects_unknown_ui_delivery() -> None:
+    """Unknown UI delivery modes should fail before Dagger reaches Docker."""
+    manifest = (ROOT / "config/components/components.toml").read_text()
+
+    with pytest.raises(ValueError, match="delivery.*embedded, sideloaded"):
+        load_components_toml(manifest.replace('delivery = "embedded"', 'delivery = "bad"'))
 
 
 def test_awx_ui_prepare_script_fetches_requested_ref_without_pull() -> None:
