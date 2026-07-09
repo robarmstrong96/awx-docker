@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 from awx_docker.config import DEFAULT_AWX_UI_REF, DEFAULT_AWX_UI_REPO
@@ -38,4 +39,37 @@ def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
         'AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}"'
         in dockerfile
     )
-    assert 'export PIP_CONSTRAINT="$AWX_PYTHON_CONSTRAINTS"' in installer
+    assert "render_yaml_constraints" in installer
+    assert 'export PIP_CONSTRAINT="$pip_constraints"' in installer
+
+
+def test_awx_python_yaml_constraints_render_to_pip_constraints(tmp_path: Path) -> None:
+    source = tmp_path / "constraints.yaml"
+    target = tmp_path / "constraints.txt"
+    source.write_text(
+        "\n".join(
+            [
+                "---",
+                "constraints:",
+                '  - "ansible-core==2.16.14"',
+                "  - ansible-runner==2.4.0",
+                "",
+            ]
+        )
+    )
+
+    subprocess.run(
+        [
+            "bash",
+            str(ROOT / "docker/awx/bin/install-awx-python-deps"),
+            "--render-constraints",
+            str(source),
+            str(target),
+        ],
+        check=True,
+    )
+
+    assert target.read_text().splitlines() == [
+        "ansible-core==2.16.14",
+        "ansible-runner==2.4.0",
+    ]

@@ -11,7 +11,7 @@ ARG AWX_SOURCE_REVISION=unknown
 ARG AWX_UI_REPO=https://github.com/ansible/ansible-ui.git
 ARG AWX_UI_REF=v2.4.313
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
-ARG AWX_PYTHON_CONSTRAINTS=awx-python.txt
+ARG AWX_PYTHON_CONSTRAINTS=awx-python.yaml
 
 # ----- Receptor binary --------------------------------------------------------
 

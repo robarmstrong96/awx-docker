@@ -34,18 +34,12 @@ class PythonSettings:
 
 
 @dataclass(frozen=True)
-class ExecutionEnvironmentSettings:
-    requirements: str
-
-
-@dataclass(frozen=True)
 class Components:
     schema_version: int
     awx: AwxSource
     awx_ui: AwxUiSource
     images: ImageSettings
     python: PythonSettings
-    execution_environment: ExecutionEnvironmentSettings
 
 
 def load_components_file(path: Path) -> Components:
@@ -62,7 +56,6 @@ def load_components_toml(text: str) -> Components:
     awx_ui = _table(data, "awx_ui")
     images = _table(data, "images")
     python = _table(data, "python")
-    execution_environment = _table(data, "execution_environment")
 
     return Components(
         schema_version=schema_version,
@@ -84,9 +77,6 @@ def load_components_toml(text: str) -> Components:
         ),
         python=PythonSettings(
             constraints=_string(python, "constraints"),
-        ),
-        execution_environment=ExecutionEnvironmentSettings(
-            requirements=_string(execution_environment, "requirements"),
         ),
     )
 

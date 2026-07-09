@@ -34,13 +34,6 @@ def test_components_manifest_is_default_version_source() -> None:
     assert DEFAULT_AWX_PYTHON_CONSTRAINTS == components.python.constraints
 
 
-def test_components_manifest_tracks_ee_collection_requirements() -> None:
-    components = load_components_file(ROOT / "components.toml")
-
-    assert components.execution_environment.requirements == "ee/requirements.yml"
-    assert (ROOT / components.execution_environment.requirements).exists()
-
-
 def test_components_manifest_rejects_unsupported_schema() -> None:
     with pytest.raises(ValueError, match="unsupported components schema_version"):
         load_components_toml("schema_version = 2\n")

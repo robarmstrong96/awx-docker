@@ -22,14 +22,14 @@ Tracked defaults live in `components.toml`. That file pins the upstream AWX
 source, AWX UI source, base image, receptor image, local image tag, platform,
 and the dependency control files this wrapper owns.
 
-Use `docker/awx/constraints/awx-python.txt` for intentional AWX control-plane
+Use `docker/awx/constraints/awx-python.yaml` for intentional AWX control-plane
 Python overrides. Upstream AWX requirements remain the primary dependency
 contract; exact pins in this constraints file either constrain upstream
 resolution or fail the build when incompatible.
 
-Use `ee/requirements.yml` for Ansible collection pins that belong in execution
-environment images. Job Ansible and collection versions should be controlled by
-the EE image selected by AWX job templates, not by the AWX web/task image.
+Job Ansible and collection versions should be controlled by the execution
+environment image selected by AWX job templates, not by the AWX web/task image.
+This wrapper does not build EE images yet.
 
 ## Requirements
 
@@ -145,8 +145,7 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 - Upstream AWX UI ref: `v2.4.313`
 - Base image: `quay.io/centos/centos:stream9`
 - Receptor image: `quay.io/ansible/receptor:devel`
-- AWX Python constraints: `docker/awx/constraints/awx-python.txt`
-- EE collection requirements: `ee/requirements.yml`
+- AWX Python constraints: `docker/awx/constraints/awx-python.yaml`
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 
