@@ -3,10 +3,10 @@
 # Prepare container-local AWX runtime configuration, repair runtime-only Podman
 # state, and then hand off to the upstream AWX startup command.
 #
-# Documentation style:
+# Comment style:
 # https://google.github.io/styleguide/shellguide.html#comments
 #
-# Strict mode reference:
+# Why set -euo pipefail:
 # https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
 set -euo pipefail
 

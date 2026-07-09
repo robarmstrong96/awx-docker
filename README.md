@@ -9,32 +9,32 @@ and lifecycle management, use the AWX Operator.
 
 ## What This Is
 
-This is a thin image builder. The Dockerfile clones upstream AWX during the
-image build, assembles the runtime files, and keeps source and license metadata
-inside the image.
+This is a thin image builder for trying AWX locally. The Dockerfile fetches
+upstream AWX during the build, assembles the pieces the dev startup path needs,
+and keeps source and license metadata in the image.
 
 Dagger is the main command surface. Just is only a small convenience layer for
 common local commands.
 
 ## Component Versions
 
-Tracked defaults live in `components.toml`. That file pins the upstream AWX
-source, AWX UI source, base image, receptor image, local image tag, platform,
-and the dependency control files this wrapper owns.
+The default versions live in `components.toml`: AWX, AWX UI, the base image,
+receptor, the local image tag, the platform, and the small dependency files this
+wrapper owns.
 
-Dagger reads those defaults through the Python config layer and passes them to
-the Dockerfile as build arguments. The Dockerfile keeps matching `ARG` defaults
-only as a direct `docker build` fallback; it cannot source `components.toml`
-before `ARG` and `FROM` are evaluated.
+Dagger reads that file through the Python config layer and passes the values to
+the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
+defaults so a plain `docker build` has a reasonable fallback. It cannot read
+`components.toml` itself before `ARG` and `FROM` are evaluated.
 
 Use `docker/awx/constraints/awx-python.yaml` for intentional AWX control-plane
-Python overrides. Upstream AWX requirements remain the primary dependency
-contract; exact pins in this constraints file either constrain upstream
-resolution or fail the build when incompatible.
+Python overrides. Upstream AWX requirements are still the baseline. Pins in
+this file narrow that resolution, and the build fails if a pin cannot work with
+the upstream requirements.
 
 Job Ansible and collection versions should be controlled by the execution
 environment image selected by AWX job templates, not by the AWX web/task image.
-This wrapper does not build EE images yet.
+This wrapper does not build those EE images yet.
 
 ## Requirements
 
@@ -63,11 +63,10 @@ dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image
 ```
 
 The AWX UI source is pinned separately from the AWX server source. The default
-is recorded in `components.toml`, and `--awx-ui-ref` can still override it for a
-single Dagger call. Upstream AWX defaults to cloning `ansible-ui` from `main`
-when building UI assets; this wrapper fetches `ansible-ui` at the configured UI
-ref first so `make ui` builds from a known tag or commit instead of pulling the
-moving branch.
+lives in `components.toml`, and `--awx-ui-ref` can still override it for one
+Dagger call. Upstream AWX normally clones `ansible-ui` from `main` while
+building UI assets; this wrapper checks out the configured UI ref first so
+`make ui` builds from a known tag or commit instead of a moving branch.
 
 ## Example Compose Smoke Test
 
