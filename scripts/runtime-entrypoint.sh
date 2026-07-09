@@ -115,6 +115,9 @@ write_awx_config() {
 
 #######################################
 # Clear container-local Podman runtime state from previous starts.
+# Podman may cache boot-specific state under /run. If the outer host or
+# container restarts, that stale state can make nested Podman refuse to start
+# until /run/containers/storage and /run/libpod are removed.
 # Globals:
 #   None
 # Arguments:
