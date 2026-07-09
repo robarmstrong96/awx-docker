@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Verify the built image contains the AWX source, runtime helpers, Python
-# metadata, and source-license evidence expected by this wrapper.
+# metadata, and source-license files expected by this wrapper.
 #
 # Comment style:
 # https://google.github.io/styleguide/shellguide.html#comments
@@ -11,7 +11,6 @@
 set -euo pipefail
 
 image_ref="${1:-awx-devel:devel}"
-evidence_dir="${EVIDENCE_DIR:-/tmp/awx-docker-evidence}"
 
 test -f /awx_devel/manage.py
 test -f /awx_devel/LICENSE.md
@@ -31,31 +30,4 @@ test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
 test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 test -f /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION
 
-source_revision="$(cat /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION)"
-requested_ref="$(cat /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF)"
-
-install -d -m 0755 "$evidence_dir"
-
-{
-	printf '{\n'
-	printf '  "awx": {\n'
-	printf '    "git_metadata": "absent",\n'
-	printf '    "requested_ref": "%s",\n' "$requested_ref"
-	printf '    "source_revision": "%s"\n' "$source_revision"
-	printf '  },\n'
-	printf '  "image": {\n'
-	printf '    "ref": "%s"\n' "$image_ref"
-	printf '  },\n'
-	printf '  "schema_version": "awx-docker.image-verification/v1",\n'
-	printf '  "status": "passed"\n'
-	printf '}\n'
-} >"$evidence_dir/image-verification.json"
-
-{
-	printf '# AWX Image Verification\n\n'
-	printf -- '%s%s%s\n' '- Image: `' "$image_ref" '`'
-	printf -- '%s%s%s\n' '- AWX requested ref: `' "$requested_ref" '`'
-	printf -- '%s%s%s\n' '- AWX source revision: `' "$source_revision" '`'
-	printf -- '- Embedded AWX git metadata: absent\n'
-	printf -- '- Status: passed\n'
-} >"$evidence_dir/image-verification.md"
+printf 'runtime-contract: ok (%s)\n' "$image_ref"

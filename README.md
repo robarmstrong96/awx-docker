@@ -60,7 +60,7 @@ dagger call resolve-ref --source=. --upstream-ref=devel
 dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 
 # Build the image and run the runtime contract check.
-dagger call verify --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 export --path=build/evidence
+dagger call verify --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 
 # Export a verified image as an OCI tarball.
 dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar

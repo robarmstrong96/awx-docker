@@ -22,7 +22,7 @@ build:
     dagger call build --source=.
 
 verify:
-    dagger call verify --source=. export --path=build/evidence
+    dagger call verify --source=.
 
 export:
     dagger call export --source=. export --path=build/out/awx-devel.tar

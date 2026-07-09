@@ -41,4 +41,3 @@ jobs:
             --awx-ui-ref=${{ inputs.awx_ui_ref }}
             --image-name=${{ inputs.image_name }}
             --image-tag=${{ inputs.image_tag }}
-            export --path=build/evidence
