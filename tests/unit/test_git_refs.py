@@ -1,8 +1,51 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from awx_docker.git_refs import resolve_ref
+
+
+def git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
+@pytest.fixture
+def repo_with_refs(tmp_path: Path) -> tuple[str, dict[str, str]]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    git(repo, "init")
+    git(repo, "config", "user.email", "awx-docker@example.invalid")
+    git(repo, "config", "user.name", "AWX Docker Tests")
+
+    git(repo, "commit", "--allow-empty", "-m", "branch target")
+    branch_sha = git(repo, "rev-parse", "HEAD")
+    git(repo, "branch", "devel")
+
+    git(repo, "commit", "--allow-empty", "-m", "lightweight tag target")
+    lightweight_tag_sha = git(repo, "rev-parse", "HEAD")
+    git(repo, "tag", "lightweight")
+
+    git(repo, "commit", "--allow-empty", "-m", "annotated tag target")
+    annotated_tag_sha = git(repo, "rev-parse", "HEAD")
+    git(repo, "tag", "-a", "annotated", "-m", "annotated tag")
+
+    return (
+        str(repo),
+        {
+            "devel": branch_sha,
+            "lightweight": lightweight_tag_sha,
+            "annotated": annotated_tag_sha,
+        },
+    )
 
 
 def test_resolve_ref_returns_full_sha_without_network() -> None:
@@ -11,24 +54,17 @@ def test_resolve_ref_returns_full_sha_without_network() -> None:
 
 
 @pytest.mark.parametrize(
-    ("stdout", "expected"),
+    "ref",
     [
-        ("1" * 40 + "\trefs/heads/devel\n", "1" * 40),
-        ("2" * 40 + "\trefs/tags/1.0.0\n", "2" * 40),
-        (
-            "3" * 40 + "\trefs/tags/1.0.0\n" + "4" * 40 + "\trefs/tags/1.0.0^{}\n",
-            "4" * 40,
-        ),
+        "devel",
+        "lightweight",
+        "annotated",
     ],
 )
 def test_resolve_ref_prefers_branch_tag_and_peeled_tag(
-    monkeypatch: pytest.MonkeyPatch,
-    stdout: str,
-    expected: str,
+    repo_with_refs: tuple[str, dict[str, str]],
+    ref: str,
 ) -> None:
-    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(args=["git"], returncode=0, stdout=stdout, stderr="")
+    repo, expected = repo_with_refs
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    assert resolve_ref("https://github.com/ansible/awx.git", "devel") == expected
+    assert resolve_ref(repo, ref) == expected[ref]
