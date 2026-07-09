@@ -1,3 +1,5 @@
+"""Static tests for Docker build wiring and small shell helpers."""
+
 import subprocess
 from pathlib import Path
 
@@ -5,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
+    """The pinned UI ref must be checked out before AWX runs make ui."""
     script = (ROOT / "docker/awx-ui/bin/prepare-delivery").read_text()
 
     prepare = script.index("prepare-awx-ui-source")
@@ -14,6 +17,7 @@ def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
 
 
 def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
+    """Sideloaded UI mode should stay in shell helpers, not Dockerfile logic."""
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
     dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
     delivery_script = (ROOT / "docker/awx-ui/bin/prepare-delivery").read_text()
@@ -32,6 +36,7 @@ def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
 
 
 def test_awx_ui_prepare_script_fetches_requested_ref_without_pull() -> None:
+    """The UI source helper should fetch only the requested ref."""
     script = (ROOT / "docker/awx-ui/bin/prepare-source").read_text()
 
     assert 'git -C "$ui_src" fetch --depth 1 origin "$AWX_UI_REF"' in script
@@ -40,6 +45,7 @@ def test_awx_ui_prepare_script_fetches_requested_ref_without_pull() -> None:
 
 
 def test_awx_ui_bundle_dockerfile_exports_static_assets() -> None:
+    """The UI Dockerfile should produce a reusable static bundle directory."""
     dockerfile = (ROOT / "docker/awx-ui/Dockerfile").read_text()
     exporter = (ROOT / "docker/awx-ui/bin/export-static-bundle").read_text()
 
@@ -49,6 +55,7 @@ def test_awx_ui_bundle_dockerfile_exports_static_assets() -> None:
 
 
 def test_awx_ee_definition_pins_core_and_runner_once() -> None:
+    """Core and runner pins belong in the Ansible Builder definition."""
     definition = (ROOT / "docker/awx-ee/execution-environment.yml").read_text()
     python_requirements = [
         line.strip()
@@ -65,6 +72,7 @@ def test_awx_ee_definition_pins_core_and_runner_once() -> None:
 
 
 def test_dagger_exposes_ui_and_ee_builds() -> None:
+    """The Dagger API should expose separate UI and EE build/export calls."""
     dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
 
     assert "async def build_ui(" in dagger_module
@@ -75,6 +83,7 @@ def test_dagger_exposes_ui_and_ee_builds() -> None:
 
 
 def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
+    """AWX Python constraints should be copied from config and passed to pip."""
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
     installer = (ROOT / "docker/awx/bin/install-awx-python-deps").read_text()
 
@@ -87,12 +96,14 @@ def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
 
 
 def test_dockerfile_copies_awx_package_repos_from_config() -> None:
+    """AWX-specific RPM repo files should come from config/awx."""
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
 
     assert "COPY config/awx/repos/ansible-rsyslog-epel-9.repo" in dockerfile
 
 
 def test_awx_python_yaml_constraints_render_to_pip_constraints(tmp_path: Path) -> None:
+    """The Bash renderer should turn the YAML list into pip constraint lines."""
     source = tmp_path / "constraints.yaml"
     target = tmp_path / "constraints.txt"
     source.write_text(

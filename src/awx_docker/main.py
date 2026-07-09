@@ -1,3 +1,5 @@
+"""Dagger build functions for AWX, AWX UI, and AWX EE images."""
+
 import dagger
 from dagger import dag, function, object_type
 
@@ -25,11 +27,14 @@ from awx_docker.config import (
 
 
 def _uv_python(*args: str) -> list[str]:
+    """Build a uv command that runs Python with the configured version."""
     return ["uv", "run", "--python", DEFAULT_TOOLING_PYTHON, "python", *args]
 
 
 @object_type
 class AwxDocker:
+    """Dagger API exposed by this repository."""
+
     @function
     async def check(self, source: dagger.Directory) -> str:
         """Run lint and unit tests."""
@@ -315,6 +320,7 @@ class AwxDocker:
         python_constraints: str,
         ssh_auth_sock: str,
     ) -> dagger.Container:
+        """Build the AWX control-plane image from a resolved upstream commit."""
         ssh = dag.host().unix_socket(ssh_auth_sock) if ssh_auth_sock else None
         return (
             source.docker_build(
@@ -360,6 +366,7 @@ class AwxDocker:
         platform: str,
         base_image: str,
     ) -> dagger.Container:
+        """Build a container that exposes the AWX UI static bundle directory."""
         return (
             source.docker_build(
                 dockerfile="docker/awx-ui/Dockerfile",
@@ -385,6 +392,7 @@ class AwxDocker:
         )
 
     async def _build_ee_context(self, source: dagger.Directory) -> dagger.Directory:
+        """Generate an Ansible Builder context for the starter EE image."""
         return (
             self._python(source)
             .with_exec(
@@ -403,6 +411,7 @@ class AwxDocker:
         )
 
     def _verify_ee_image(self, image: dagger.Container) -> dagger.Container:
+        """Attach basic smoke checks to a built EE image."""
         return (
             image.with_exec(["python", "--version"])
             .with_exec(["ansible", "--version"])
@@ -411,6 +420,7 @@ class AwxDocker:
         )
 
     def _python(self, source: dagger.Directory) -> dagger.Container:
+        """Create the Python tooling container used by Dagger tasks."""
         return (
             dag.container()
             .from_(DEFAULT_TOOLING_UV_IMAGE)
@@ -431,6 +441,7 @@ class AwxDocker:
         )
 
     def _tools(self, source: dagger.Directory) -> dagger.Container:
+        """Create the lint container with shell tools installed."""
         return (
             self._python(source)
             .with_exec(["apt-get", "update"])
@@ -448,6 +459,7 @@ class AwxDocker:
         )
 
     def _lint_container(self, source: dagger.Directory) -> dagger.Container:
+        """Attach formatter, linter, and ShellCheck commands to a container."""
         ctr = self._tools(source)
         ctr = ctr.with_exec(["uv", "run", "ruff", "format", "--check", "."])
         ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
@@ -471,6 +483,7 @@ class AwxDocker:
         upstream_repository: str,
         upstream_ref: str,
     ) -> str:
+        """Resolve an AWX ref inside the Dagger Python tooling container."""
         return (
             await self._python(source)
             .with_exec(
@@ -489,6 +502,7 @@ class AwxDocker:
         ).strip()
 
     def _split_image_ref(self, image_ref: str) -> tuple[str, str]:
+        """Split an image ref into name and tag, using the default tag if needed."""
         if ":" not in image_ref.rsplit("/", 1)[-1]:
             return image_ref, DEFAULT_IMAGE_TAG
         image_name, image_tag = image_ref.rsplit(":", 1)

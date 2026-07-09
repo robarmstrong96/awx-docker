@@ -1,3 +1,5 @@
+"""Default build settings loaded from the component manifest."""
+
 from pathlib import Path
 
 from awx_docker.utilities import load_components_file

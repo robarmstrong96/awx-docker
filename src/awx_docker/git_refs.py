@@ -1,3 +1,5 @@
+"""Small Git helpers used to pin upstream AWX source refs."""
+
 import re
 import subprocess
 import tempfile
@@ -7,6 +9,7 @@ FULL_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 def resolve_ref(repo: str, ref: str) -> str:
+    """Resolve a branch, tag, or SHA to the commit SHA Docker should build."""
     if FULL_SHA_RE.match(ref):
         return ref
 
@@ -44,6 +47,7 @@ def resolve_ref(repo: str, ref: str) -> str:
 
 
 def verify_revision_reachable(repo: str, revision: str) -> bool:
+    """Return whether a commit SHA can be fetched from the given repository."""
     if not FULL_SHA_RE.match(revision):
         return False
 

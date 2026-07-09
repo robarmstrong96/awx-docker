@@ -1,3 +1,5 @@
+"""Parsing helpers for the shared component version manifest."""
+
 from __future__ import annotations
 
 import tomllib
@@ -8,12 +10,16 @@ from typing import Any
 
 @dataclass(frozen=True)
 class AwxSource:
+    """Upstream AWX repository and ref to build."""
+
     repository: str
     ref: str
 
 
 @dataclass(frozen=True)
 class AwxUiSource:
+    """Pinned AWX UI source and delivery mode."""
+
     repository: str
     ref: str
     delivery: str
@@ -21,6 +27,8 @@ class AwxUiSource:
 
 @dataclass(frozen=True)
 class AwxUiBundleSettings:
+    """Defaults for the exported static UI bundle."""
+
     name: str
     tag: str
     export_path: str
@@ -28,6 +36,8 @@ class AwxUiBundleSettings:
 
 @dataclass(frozen=True)
 class AwxEeSettings:
+    """Defaults for the starter AWX execution environment image."""
+
     base: str
     name: str
     tag: str
@@ -36,6 +46,8 @@ class AwxEeSettings:
 
 @dataclass(frozen=True)
 class ImageSettings:
+    """Defaults for the AWX control-plane image build."""
+
     base: str
     receptor: str
     name: str
@@ -45,17 +57,23 @@ class ImageSettings:
 
 @dataclass(frozen=True)
 class PythonSettings:
+    """Python dependency knobs owned by this wrapper."""
+
     constraints: str
 
 
 @dataclass(frozen=True)
 class ToolingSettings:
+    """Local tooling versions used by Dagger checks."""
+
     python: str
     uv_image: str
 
 
 @dataclass(frozen=True)
 class Components:
+    """Typed view of config/components/components.toml."""
+
     schema_version: int
     awx: AwxSource
     awx_ui: AwxUiSource
@@ -67,10 +85,12 @@ class Components:
 
 
 def load_components_file(path: Path) -> Components:
+    """Read and parse a component manifest from disk."""
     return load_components_toml(path.read_text())
 
 
 def load_components_toml(text: str) -> Components:
+    """Parse component TOML into typed settings with simple validation."""
     data = tomllib.loads(text)
     schema_version = _int(data, "schema_version")
     if schema_version != 1:
@@ -124,6 +144,7 @@ def load_components_toml(text: str) -> Components:
 
 
 def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
+    """Read a required TOML table."""
     value = data.get(key)
     if not isinstance(value, dict):
         raise ValueError(f"components field {key!r} must be a table")
@@ -131,6 +152,7 @@ def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _string(data: dict[str, Any], key: str) -> str:
+    """Read a required non-empty TOML string."""
     value = data.get(key)
     if not isinstance(value, str) or not value:
         raise ValueError(f"components field {key!r} must be a non-empty string")
@@ -138,6 +160,7 @@ def _string(data: dict[str, Any], key: str) -> str:
 
 
 def _choice(data: dict[str, Any], key: str, choices: set[str]) -> str:
+    """Read a required string that must be one of a known set."""
     value = _string(data, key)
     if value not in choices:
         expected = ", ".join(sorted(choices))
@@ -146,6 +169,7 @@ def _choice(data: dict[str, Any], key: str, choices: set[str]) -> str:
 
 
 def _int(data: dict[str, Any], key: str) -> int:
+    """Read a required TOML integer."""
     value = data.get(key)
     if not isinstance(value, int):
         raise ValueError(f"components field {key!r} must be an integer")

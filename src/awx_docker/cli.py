@@ -1,3 +1,5 @@
+"""Command-line helpers used by the Dagger build."""
+
 import argparse
 import os
 
@@ -9,11 +11,13 @@ from awx_docker.git_refs import resolve_ref
 
 
 def cmd_resolve_ref(args: argparse.Namespace) -> int:
+    """Print the resolved upstream AWX commit SHA."""
     print(resolve_ref(args.upstream_repository, args.upstream_ref))
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the small CLI parser used inside build containers."""
     parser = argparse.ArgumentParser(prog="awx-docker")
     sub = parser.add_subparsers(required=True)
 
@@ -31,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the CLI and return a process exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
     return args.func(args)
