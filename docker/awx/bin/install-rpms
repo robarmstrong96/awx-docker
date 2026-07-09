@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Install RPM packages listed in a package file and enable optional build
+# repositories or module streams requested by environment variables.
 set -euo pipefail
 
 package_file="${1:?package list path required}"

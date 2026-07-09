@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#
+# Check AWX HTTP readiness plus supervisor and receptor process health.
 set -euo pipefail
 
 healthcheck_port="${AWX_HEALTHCHECK_PORT:-8013}"

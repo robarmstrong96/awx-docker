@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Verify the built image contains the AWX source, runtime helpers, Python
+# metadata, and source-license evidence expected by this wrapper.
 set -euo pipefail
 
 image_ref="${1:-awx-devel:devel}"

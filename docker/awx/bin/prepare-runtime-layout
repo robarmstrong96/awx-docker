@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Create runtime directories and writable files required by AWX, nginx,
+# rsyslog, Postgres tooling, and nested Podman.
 set -euo pipefail
 
 for dir in \

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Fetch the configured AWX source ref into /awx-src and write source metadata
+# consumed by the final image.
 set -euo pipefail
 
 : "${AWX_REPO:?AWX_REPO is required}"

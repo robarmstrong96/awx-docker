@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Install upstream AWX Python requirements, optionally constrained by the
+# wrapper-provided AWX_PYTHON_CONSTRAINTS file.
 set -euo pipefail
 
 install -d -m 0700 ~/.ssh

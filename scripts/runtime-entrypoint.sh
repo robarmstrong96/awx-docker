@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
+#
+# Prepare container-local AWX runtime configuration, repair runtime-only Podman
+# state, and then hand off to the upstream AWX startup command.
 set -euo pipefail
 
-# require_env -- return non-zero when any required variable is unset or empty
+#######################################
+# Check that required environment variables are set and non-empty.
+# Globals:
+#   None
+# Arguments:
+#   Environment variable names to check.
+# Outputs:
+#   Writes one error line to stderr for each missing variable.
+# Returns:
+#   0 when every named variable is present, 1 otherwise.
+#######################################
 require_env() {
 	local missing=0
 	for name in "$@"; do
@@ -13,9 +26,17 @@ require_env() {
 	return "$missing"
 }
 
-# write_dynamic_users -- update user/group files for the runtime UID
-#
-# AWX still needs an awx user, nginx entries, and Podman UID/GID ranges.
+#######################################
+# Update user and group files for the runtime UID.
+# Globals:
+#   CURRENT_UID
+# Arguments:
+#   None
+# Outputs:
+#   Writes /etc/passwd, /etc/group, /etc/subuid, and /etc/subgid.
+# Returns:
+#   0 on success, non-zero on write failure.
+#######################################
 write_dynamic_users() {
 	if [[ "$(id -u)" -lt 500 && -n "${CURRENT_UID:-}" ]]; then
 		return
@@ -40,11 +61,27 @@ write_dynamic_users() {
 	printf 'awx:100000:50001\n' >/etc/subgid
 }
 
-# write_awx_config -- generate AWX config files from environment variables
-#
-# The image already includes the static config pieces. Secrets and service
-# addresses are supplied at deployment time. Stop immediately if any required
-# value is missing so AWX does not start with incomplete config.
+#######################################
+# Generate AWX config files from deployment environment variables.
+# Globals:
+#   AWX_BROKER_URL
+#   AWX_BROADCAST_WEBSOCKET_SECRET
+#   AWX_CACHE_URL
+#   AWX_CSRF_TRUSTED_ORIGIN
+#   AWX_DB_HOST
+#   AWX_DB_NAME
+#   AWX_DB_PASSWORD
+#   AWX_DB_PORT
+#   AWX_DB_USER
+#   AWX_SECRET_KEY
+#   AWX_SYSTEM_UUID
+# Arguments:
+#   None
+# Outputs:
+#   Writes AWX configuration files under /etc/tower and /etc/receptor.
+# Returns:
+#   0 on success, non-zero when required configuration is missing.
+#######################################
 write_awx_config() {
 	local config_src=/usr/local/share/awx-docker/tower
 
@@ -70,14 +107,18 @@ write_awx_config() {
 	touch /etc/receptor/receptor.conf.lock
 }
 
-# reset_podman_run_state -- clear container-local Podman runtime state
-#
-# Nested Podman caches boot-specific state under /run, including the previous
-# boot ID, and may refuse to start execution-environment containers after the
-# outer host or container restarts.
-#
-# Only runtime paths are removed here. Persistent AWX state and image storage
-# live elsewhere.
+#######################################
+# Clear container-local Podman runtime state from previous starts.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Removes runtime-only Podman state under /run and writes a stderr notice
+#   when state was cleared.
+# Returns:
+#   0 on success, non-zero on remove failure.
+#######################################
 reset_podman_run_state() {
 	local dir removed=0
 

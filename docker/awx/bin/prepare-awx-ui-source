@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Replace upstream AWX's default ansible-ui checkout with the configured UI ref
+# before running the AWX UI build.
 set -euo pipefail
 
 : "${AWX_UI_REPO:?AWX_UI_REPO is required}"
