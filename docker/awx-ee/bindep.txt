@@ -1,1 +1,1 @@
-# Add RPM-level EE dependencies here when collections or playbooks require them.
+# Extra RPM packages for this EE go here.

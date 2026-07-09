@@ -1,9 +1,8 @@
 ---
-# Optional pip constraints for the AWX control-plane virtualenv.
+# Optional AWX Python pins.
 #
-# Upstream AWX requirements remain the primary dependency contract. Add exact
-# pins here only when this wrapper intentionally overrides an upstream AWX
-# Python dependency.
+# AWX already has its own requirements. Only add something here when we need to
+# force one of those Python packages to a specific version.
 #
 # Example:
 #

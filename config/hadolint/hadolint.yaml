@@ -1,17 +1,17 @@
 # Hadolint rule reference:
 # https://github.com/hadolint/hadolint#rules
 ignored:
-  # Needs root during startup prep.
+  # AWX starts as root here.
   - DL3002
 
-  # Image refs come from build args.
+  # Image names come from build args.
   - DL3006
 
-  # Python pins come from AWX requirements and our constraints file.
+  # Python pins live in AWX requirements/config.
   - DL3013
 
-  # We are not locking CentOS Stream RPM versions here.
+  # Do not pin CentOS Stream RPMs.
   - DL3041
 
-  # Separate RUN steps keep the Dockerfile easier to work on.
+  # Separate RUN steps are easier to debug.
   - DL3059
