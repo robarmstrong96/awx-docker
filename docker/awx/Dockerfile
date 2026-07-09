@@ -11,6 +11,7 @@ ARG AWX_SOURCE_REVISION=unknown
 ARG AWX_UI_REPO=https://github.com/ansible/ansible-ui.git
 ARG AWX_UI_REF=v2.4.313
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
+ARG AWX_PYTHON_CONSTRAINTS=awx-python.txt
 
 # ----- Receptor binary --------------------------------------------------------
 
@@ -66,6 +67,7 @@ RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 
 ARG VERSION
 ARG SETUPTOOLS_SCM_PRETEND_VERSION
+ARG AWX_PYTHON_CONSTRAINTS
 
 # Copy only the files needed to install Python packages.
 # The finished Python environment is copied into the final image later.
@@ -75,9 +77,11 @@ COPY --from=awx-source /awx-src/requirements/requirements.txt /tmp/requirements/
 COPY --from=awx-source /awx-src/requirements/requirements_tower_uninstall.txt /tmp/requirements/requirements_tower_uninstall.txt
 COPY --from=awx-source /awx-src/requirements/requirements_git.txt /tmp/requirements/requirements_git.txt
 COPY --from=awx-source /awx-src/requirements/requirements_dev.txt /tmp/requirements/requirements_dev.txt
+COPY docker/awx/constraints /tmp/requirements/constraints
 
 WORKDIR /tmp
-RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
+RUN --mount=type=ssh AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}" \
+    /usr/local/libexec/awx-docker/install-awx-python-deps
 
 # ----- Final image ------------------------------------------------------------
 
@@ -89,6 +93,7 @@ ARG AWX_SOURCE_REVISION
 ARG AWX_UI_REPO
 ARG AWX_UI_REF
 ARG RECEPTOR_IMAGE
+ARG AWX_PYTHON_CONSTRAINTS
 ARG INSTALL_PYTHON_DEBUGINFO=false
 
 ENV LANG=en_US.UTF-8 \
@@ -110,7 +115,8 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}" \
       dev.awx-wrapper.awx-ui.repo="${AWX_UI_REPO}" \
       dev.awx-wrapper.awx-ui.ref="${AWX_UI_REF}" \
-      dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}"
+      dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}" \
+      dev.awx-wrapper.python.constraints="${AWX_PYTHON_CONSTRAINTS}"
 
 USER root
 

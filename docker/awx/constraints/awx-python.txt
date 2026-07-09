@@ -1,0 +1,8 @@
+# Optional pip constraints for the AWX control-plane virtualenv.
+#
+# Upstream AWX requirements remain the primary dependency contract. Add exact
+# pins here only when this wrapper intentionally overrides an upstream AWX
+# Python dependency, for example:
+#
+# ansible-core==2.16.14
+# ansible-runner==2.4.0

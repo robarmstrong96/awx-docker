@@ -1,11 +1,19 @@
 from pathlib import Path
 
-DEFAULT_AWX_REPO = "https://github.com/ansible/awx.git"
-DEFAULT_AWX_REF = "devel"
-DEFAULT_AWX_UI_REPO = "https://github.com/ansible/ansible-ui.git"
-DEFAULT_AWX_UI_REF = "v2.4.313"
-DEFAULT_RECEPTOR_IMAGE = "quay.io/ansible/receptor:devel"
-DEFAULT_PLATFORM = "linux/amd64"
+from awx_docker.components import load_components_file
+
+DEFAULT_COMPONENTS_FILE = "components.toml"
+DEFAULT_COMPONENTS = load_components_file(
+    Path(__file__).resolve().parents[2] / DEFAULT_COMPONENTS_FILE
+)
+DEFAULT_AWX_REPO = DEFAULT_COMPONENTS.awx.repository
+DEFAULT_AWX_REF = DEFAULT_COMPONENTS.awx.ref
+DEFAULT_AWX_UI_REPO = DEFAULT_COMPONENTS.awx_ui.repository
+DEFAULT_AWX_UI_REF = DEFAULT_COMPONENTS.awx_ui.ref
+DEFAULT_BASE_IMAGE = DEFAULT_COMPONENTS.images.base
+DEFAULT_RECEPTOR_IMAGE = DEFAULT_COMPONENTS.images.receptor
+DEFAULT_PLATFORM = DEFAULT_COMPONENTS.images.platform
 DEFAULT_EVIDENCE_DIR = Path("build/evidence")
-DEFAULT_IMAGE_NAME = "awx-devel"
-DEFAULT_IMAGE_TAG = "devel"
+DEFAULT_IMAGE_NAME = DEFAULT_COMPONENTS.images.name
+DEFAULT_IMAGE_TAG = DEFAULT_COMPONENTS.images.tag
+DEFAULT_AWX_PYTHON_CONSTRAINTS = DEFAULT_COMPONENTS.python.constraints

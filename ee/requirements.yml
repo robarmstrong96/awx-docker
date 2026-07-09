@@ -1,0 +1,6 @@
+---
+# Pin Ansible collections for execution-environment images here.
+#
+# These collections are used by jobs running inside EE containers, not by the
+# AWX web/task control-plane image built from docker/awx/Dockerfile.
+collections: []

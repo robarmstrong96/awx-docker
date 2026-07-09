@@ -49,22 +49,22 @@ def repo_with_refs(tmp_path: Path) -> tuple[str, dict[str, str]]:
 
 
 def test_resolve_ref_returns_full_sha_without_network() -> None:
-    sha = "a" * 40
-    assert resolve_ref("https://github.com/ansible/awx.git", sha) == sha
+    commit_sha = "a" * 40
+    assert resolve_ref("https://github.com/ansible/awx.git", commit_sha) == commit_sha
 
 
 @pytest.mark.parametrize(
-    "ref",
+    "ref_type",
     [
-        "devel",
-        "lightweight",
-        "annotated",
+        pytest.param("devel", id="branch"),
+        pytest.param("lightweight", id="lightweight-tag"),
+        pytest.param("annotated", id="annotated-tag"),
     ],
 )
 def test_resolve_ref_prefers_branch_tag_and_peeled_tag(
     repo_with_refs: tuple[str, dict[str, str]],
-    ref: str,
+    ref_type: str,
 ) -> None:
     repo, expected = repo_with_refs
 
-    assert resolve_ref(repo, ref) == expected[ref]
+    assert resolve_ref(repo, ref_type) == expected[ref_type]

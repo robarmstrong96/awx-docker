@@ -27,3 +27,15 @@ def test_awx_ui_prepare_script_fetches_requested_ref_without_pull() -> None:
 
     assert 'git -C "$ui_src" fetch --depth 1 origin "$AWX_UI_REF"' in script
     assert "git pull" not in script
+
+
+def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
+    dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
+    installer = (ROOT / "docker/awx/bin/install-awx-python-deps").read_text()
+
+    assert "COPY docker/awx/constraints /tmp/requirements/constraints" in dockerfile
+    assert (
+        'AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}"'
+        in dockerfile
+    )
+    assert 'export PIP_CONSTRAINT="$AWX_PYTHON_CONSTRAINTS"' in installer

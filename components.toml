@@ -1,0 +1,23 @@
+schema_version = 1
+
+[awx]
+repository = "https://github.com/ansible/awx.git"
+ref = "devel"
+
+[awx_ui]
+repository = "https://github.com/ansible/ansible-ui.git"
+ref = "v2.4.313"
+delivery = "embedded"
+
+[images]
+base = "quay.io/centos/centos:stream9"
+receptor = "quay.io/ansible/receptor:devel"
+name = "awx-devel"
+tag = "devel"
+platform = "linux/amd64"
+
+[python]
+constraints = "awx-python.txt"
+
+[execution_environment]
+requirements = "ee/requirements.yml"

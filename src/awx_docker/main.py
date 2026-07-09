@@ -2,10 +2,12 @@ import dagger
 from dagger import dag, function, object_type
 
 from awx_docker.config import (
+    DEFAULT_AWX_PYTHON_CONSTRAINTS,
     DEFAULT_AWX_REF,
     DEFAULT_AWX_REPO,
     DEFAULT_AWX_UI_REF,
     DEFAULT_AWX_UI_REPO,
+    DEFAULT_BASE_IMAGE,
     DEFAULT_IMAGE_NAME,
     DEFAULT_IMAGE_TAG,
     DEFAULT_PLATFORM,
@@ -82,7 +84,9 @@ class AwxDocker:
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
         platform: str = DEFAULT_PLATFORM,
+        base_image: str = DEFAULT_BASE_IMAGE,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        python_constraints: str = DEFAULT_AWX_PYTHON_CONSTRAINTS,
         ssh_auth_sock: str = "",
     ) -> dagger.Container:
         """Build the AWX proof-of-concept image."""
@@ -105,7 +109,9 @@ class AwxDocker:
             image_name,
             image_tag,
             platform,
+            base_image,
             receptor_image,
+            python_constraints,
             ssh_auth_sock,
         )
 
@@ -121,7 +127,9 @@ class AwxDocker:
         image_name: str = DEFAULT_IMAGE_NAME,
         image_tag: str = DEFAULT_IMAGE_TAG,
         platform: str = DEFAULT_PLATFORM,
+        base_image: str = DEFAULT_BASE_IMAGE,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        python_constraints: str = DEFAULT_AWX_PYTHON_CONSTRAINTS,
         ssh_auth_sock: str = "",
     ) -> dagger.Directory:
         """Build the image and run the runtime contract check."""
@@ -144,7 +152,9 @@ class AwxDocker:
             image_name,
             image_tag,
             platform,
+            base_image,
             receptor_image,
+            python_constraints,
             ssh_auth_sock,
         )
         image_ref = f"{image_name}:{image_tag}"
@@ -167,7 +177,9 @@ class AwxDocker:
         resolved_revision: str = "",
         image_ref: str = f"{DEFAULT_IMAGE_NAME}:{DEFAULT_IMAGE_TAG}",
         platform: str = DEFAULT_PLATFORM,
+        base_image: str = DEFAULT_BASE_IMAGE,
         receptor_image: str = DEFAULT_RECEPTOR_IMAGE,
+        python_constraints: str = DEFAULT_AWX_PYTHON_CONSTRAINTS,
         ssh_auth_sock: str = "",
     ) -> dagger.File:
         """Build and verify an image, then return it as an OCI tarball."""
@@ -182,7 +194,9 @@ class AwxDocker:
             image_name,
             image_tag,
             platform,
+            base_image,
             receptor_image,
+            python_constraints,
             ssh_auth_sock,
         )
         verified = image.with_exec(
@@ -201,7 +215,9 @@ class AwxDocker:
         image_name: str,
         image_tag: str,
         platform: str,
+        base_image: str,
         receptor_image: str,
+        python_constraints: str,
         ssh_auth_sock: str,
     ) -> dagger.Container:
         ssh = dag.host().unix_socket(ssh_auth_sock) if ssh_auth_sock else None
@@ -210,6 +226,7 @@ class AwxDocker:
                 dockerfile="docker/awx/Dockerfile",
                 platform=dagger.Platform(platform),
                 build_args=[
+                    dagger.BuildArg("CENTOS_STREAM_IMAGE", base_image),
                     dagger.BuildArg("AWX_REPO", awx_repo),
                     dagger.BuildArg("AWX_REF", resolved_sha),
                     dagger.BuildArg("AWX_REQUESTED_REF", awx_ref),
@@ -217,6 +234,7 @@ class AwxDocker:
                     dagger.BuildArg("AWX_UI_REPO", awx_ui_repo),
                     dagger.BuildArg("AWX_UI_REF", awx_ui_ref),
                     dagger.BuildArg("RECEPTOR_IMAGE", receptor_image),
+                    dagger.BuildArg("AWX_PYTHON_CONSTRAINTS", python_constraints),
                 ],
                 ssh=ssh,
             )
@@ -226,8 +244,10 @@ class AwxDocker:
             .with_label("dev.awx-wrapper.awx.revision", resolved_sha)
             .with_label("dev.awx-wrapper.awx-ui.repo", awx_ui_repo)
             .with_label("dev.awx-wrapper.awx-ui.ref", awx_ui_ref)
+            .with_label("dev.awx-wrapper.base.image", base_image)
             .with_label("dev.awx-wrapper.image.name", f"{image_name}:{image_tag}")
             .with_label("dev.awx-wrapper.platform", platform)
+            .with_label("dev.awx-wrapper.python.constraints", python_constraints)
         )
 
     def _python(self, source: dagger.Directory) -> dagger.Container:

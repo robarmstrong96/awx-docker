@@ -6,6 +6,14 @@ if ! ssh-keyscan -T 10 github.com >~/.ssh/known_hosts; then
 	:
 fi
 
+if [[ -n "${AWX_PYTHON_CONSTRAINTS:-}" ]]; then
+	if [[ ! -f "$AWX_PYTHON_CONSTRAINTS" ]]; then
+		printf 'AWX Python constraints file not found: %s\n' "$AWX_PYTHON_CONSTRAINTS" >&2
+		exit 1
+	fi
+	export PIP_CONSTRAINT="$AWX_PYTHON_CONSTRAINTS"
+fi
+
 pip3.12 install -vv --no-cache-dir build
 make requirements_awx
 make requirements_awx_dev

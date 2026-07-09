@@ -16,6 +16,21 @@ inside the image.
 Dagger is the main command surface. Just is only a small convenience layer for
 common local commands.
 
+## Component Versions
+
+Tracked defaults live in `components.toml`. That file pins the upstream AWX
+source, AWX UI source, base image, receptor image, local image tag, platform,
+and the dependency control files this wrapper owns.
+
+Use `docker/awx/constraints/awx-python.txt` for intentional AWX control-plane
+Python overrides. Upstream AWX requirements remain the primary dependency
+contract; exact pins in this constraints file either constrain upstream
+resolution or fail the build when incompatible.
+
+Use `ee/requirements.yml` for Ansible collection pins that belong in execution
+environment images. Job Ansible and collection versions should be controlled by
+the EE image selected by AWX job templates, not by the AWX web/task image.
+
 ## Requirements
 
 - Docker or another BuildKit-capable container builder
@@ -42,10 +57,12 @@ dagger call verify --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 export 
 dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
 ```
 
-The AWX UI source is pinned separately from the AWX server source. Upstream AWX
-defaults to cloning `ansible-ui` from `main` when building UI assets; this
-wrapper fetches `ansible-ui` at `--awx-ui-ref` first so `make ui` builds from a
-known tag or commit instead of pulling the moving branch.
+The AWX UI source is pinned separately from the AWX server source. The default
+is recorded in `components.toml`, and `--awx-ui-ref` can still override it for a
+single Dagger call. Upstream AWX defaults to cloning `ansible-ui` from `main`
+when building UI assets; this wrapper fetches `ansible-ui` at the configured UI
+ref first so `make ui` builds from a known tag or commit instead of pulling the
+moving branch.
 
 ## Example Compose Smoke Test
 
@@ -121,11 +138,15 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 
 ## Defaults
 
+- Component manifest: `components.toml`
 - Upstream AWX repo: `https://github.com/ansible/awx.git`
 - Upstream AWX ref: `devel`
 - Upstream AWX UI repo: `https://github.com/ansible/ansible-ui.git`
 - Upstream AWX UI ref: `v2.4.313`
+- Base image: `quay.io/centos/centos:stream9`
 - Receptor image: `quay.io/ansible/receptor:devel`
+- AWX Python constraints: `docker/awx/constraints/awx-python.txt`
+- EE collection requirements: `ee/requirements.yml`
 - Local image tag: `awx-devel:devel`
 - Dockerfile: `docker/awx/Dockerfile`
 
