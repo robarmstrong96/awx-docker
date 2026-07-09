@@ -9,9 +9,12 @@ and lifecycle management, use the AWX Operator.
 
 ## What This Is
 
-This is a thin image builder for trying AWX locally. The Dockerfile fetches
-upstream AWX during the build, assembles the pieces the dev startup path needs,
-and keeps source and license metadata in the image.
+This is a thin image builder for trying AWX locally. It has three buildable
+deliverables:
+
+- `docker/awx` builds the AWX control-plane image.
+- `docker/awx-ui` builds a static UI bundle that can be mounted into AWX.
+- `docker/awx-ee` builds a starter execution environment image for jobs.
 
 Dagger is the main command surface. Just is only a small convenience layer for
 common local commands. Tool files that are discovered by convention, such as
@@ -21,10 +24,11 @@ repo root so the normal commands keep working.
 ## Component Versions
 
 The default versions live in `config/components/components.toml`: AWX, AWX UI,
-the AWX UI delivery mode, the base image, receptor, the local image tag, the
-platform, and the small dependency files this wrapper owns. It also pins the
-Python/uv image Dagger uses for local checks so the test environment is visible
-in the same place as the build inputs.
+the AWX UI bundle tag, the starter EE image tag, the AWX UI delivery mode, the
+base images, receptor, the local image tag, the platform, and the small
+dependency files this wrapper owns. It also pins the Python/uv image Dagger
+uses for local checks so the test environment is visible in the same place as
+the build inputs.
 
 Dagger reads that file through the Python config layer and passes the values to
 the Dockerfile as build arguments. The Dockerfile still has matching `ARG`
@@ -36,9 +40,11 @@ Python overrides. Upstream AWX requirements are still the baseline. Pins in
 this file narrow that resolution, and the build fails if a pin cannot work with
 the upstream requirements.
 
-Job Ansible and collection versions should be controlled by the execution
-environment image selected by AWX job templates, not by the AWX web/task image.
-This wrapper does not build those EE images yet.
+Job Ansible and collection versions are controlled by the execution environment
+image selected by AWX job templates, not by the AWX web/task image. The starter
+EE in `docker/awx-ee` pins `ansible-core` and `ansible-runner` in
+`execution-environment.yml`, lists collections in `requirements.yml`, and keeps
+extra Python and RPM dependencies in `requirements.txt` and `bindep.txt`.
 
 ## Requirements
 
@@ -59,11 +65,23 @@ dagger call resolve-ref --source=. --upstream-ref=devel
 # Build the image.
 dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 
+# Build only the sideloadable AWX UI bundle.
+dagger call build-ui --source=. --awx-ui-ref=v2.4.313
+
+# Build the starter execution environment image.
+dagger call build-ee --source=.
+
 # Build the image and run the runtime contract check.
 dagger call verify --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 
 # Export a verified image as an OCI tarball.
 dagger call export --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313 --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+
+# Export the UI bundle as a directory.
+dagger call export-ui --source=. export --path=build/out/awx-ui-static
+
+# Export the starter EE image as an OCI tarball.
+dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/out/awx-ee.tar
 ```
 
 The AWX UI source is pinned separately from the AWX server source. The default
@@ -86,10 +104,26 @@ dagger call export \
   export --path=build/out/awx-devel-sideloaded.tar
 ```
 
-At runtime, mount the built static bundle at `/var/lib/awx/public/static`.
-That directory is what nginx serves for `/static`, `/locales`, and
-`/favicon.ico`. The image does not copy or sync sideloaded assets during
-startup.
+Build the bundle with `dagger call export-ui --source=. export
+--path=build/out/awx-ui-static`, then mount that directory at
+`/var/lib/awx/public/static`. That directory is what nginx serves for
+`/static`, `/locales`, and `/favicon.ico`. The image does not copy or sync
+sideloaded assets during startup.
+
+## Execution Environment
+
+`docker/awx-ee/execution-environment.yml` is a minimal Ansible Builder v3
+definition. It uses an Ansible Runner base image, pins `ansible-core==2.15.13`
+and `ansible-runner==2.4.0`, and installs the starter collections listed in
+`docker/awx-ee/requirements.yml`.
+
+```bash
+dagger call build-ee --source=.
+dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/out/awx-ee.tar
+```
+
+Use this image from AWX job templates or replace it with your own EE image when
+playbooks need different core, runner, collection, Python, or RPM dependencies.
 
 ## Example Compose Smoke Test
 
@@ -153,8 +187,12 @@ just lint
 just format
 just test
 just build
+just build-ui
+just build-ee
 just verify
 just export
+just export-ui
+just export-ee
 just clean
 just distclean
 ```
@@ -164,6 +202,8 @@ Use Dagger directly when overriding build inputs:
 ```bash
 dagger call build --source=. --upstream-ref=devel --awx-ui-ref=v2.4.313
 dagger call export --source=. --image-ref=awx-devel:devel export --path=build/out/awx-devel.tar
+dagger call export-ui --source=. --awx-ui-ref=v2.4.313 export --path=build/out/awx-ui-static
+dagger call export-ee --source=. --image-ref=awx-ee:devel export --path=build/out/awx-ee.tar
 ```
 
 ## Defaults
@@ -174,13 +214,20 @@ dagger call export --source=. --image-ref=awx-devel:devel export --path=build/ou
 - Upstream AWX UI repo: `https://github.com/ansible/ansible-ui.git`
 - Upstream AWX UI ref: `v2.4.313`
 - AWX UI delivery: `embedded`
+- AWX UI bundle export path: `build/out/awx-ui-static`
 - Base image: `quay.io/centos/centos:stream9`
+- EE base image: `quay.io/ansible/ansible-runner:stable-2.15-devel`
+- EE local image tag: `awx-ee:devel`
+- EE Ansible core: `ansible-core==2.15.13`
+- EE Ansible Runner: `ansible-runner==2.4.0`
 - Receptor image: `quay.io/ansible/receptor:devel`
 - AWX Python constraints: `docker/awx/constraints/awx-python.yaml`
 - Dagger check Python: `3.12`
 - Dagger check image: `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`
 - Local image tag: `awx-devel:devel`
-- Dockerfile: `docker/awx/Dockerfile`
+- AWX Dockerfile: `docker/awx/Dockerfile`
+- AWX UI Dockerfile: `docker/awx-ui/Dockerfile`
+- AWX EE definition: `docker/awx-ee/execution-environment.yml`
 
 ## Runtime Check
 

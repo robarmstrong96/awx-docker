@@ -44,10 +44,10 @@ ARG AWX_UI_DELIVERY
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
-COPY docker/awx/bin/install-awx-ui-build-deps /usr/local/libexec/awx-docker/install-awx-ui-build-deps
-COPY docker/awx/bin/prepare-awx-ui-delivery /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
-COPY docker/awx/bin/prepare-awx-ui-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
-COPY docker/awx/packages/ui-builder.rpms /tmp/packages.rpms
+COPY docker/awx-ui/bin/install-build-deps /usr/local/libexec/awx-docker/install-awx-ui-build-deps
+COPY docker/awx-ui/bin/prepare-delivery /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
+COPY docker/awx-ui/bin/prepare-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
+COPY docker/awx-ui/packages/build.rpms /tmp/packages.rpms
 RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps
 
 COPY --from=awx-source /awx-src /tmp/src

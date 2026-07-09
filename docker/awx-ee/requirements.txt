@@ -1,0 +1,4 @@
+# Add extra Python packages for playbooks or collections here.
+#
+# ansible-core and ansible-runner are pinned in execution-environment.yml so
+# ansible-builder installs them through its dedicated dependency fields.

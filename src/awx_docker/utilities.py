@@ -20,6 +20,21 @@ class AwxUiSource:
 
 
 @dataclass(frozen=True)
+class AwxUiBundleSettings:
+    name: str
+    tag: str
+    export_path: str
+
+
+@dataclass(frozen=True)
+class AwxEeSettings:
+    base: str
+    name: str
+    tag: str
+    platform: str
+
+
+@dataclass(frozen=True)
 class ImageSettings:
     base: str
     receptor: str
@@ -44,6 +59,8 @@ class Components:
     schema_version: int
     awx: AwxSource
     awx_ui: AwxUiSource
+    awx_ui_bundle: AwxUiBundleSettings
+    awx_ee: AwxEeSettings
     images: ImageSettings
     python: PythonSettings
     tooling: ToolingSettings
@@ -61,6 +78,8 @@ def load_components_toml(text: str) -> Components:
 
     awx = _table(data, "awx")
     awx_ui = _table(data, "awx_ui")
+    awx_ui_bundle = _table(data, "awx_ui_bundle")
+    awx_ee = _table(data, "awx_ee")
     images = _table(data, "images")
     python = _table(data, "python")
     tooling = _table(data, "tooling")
@@ -75,6 +94,17 @@ def load_components_toml(text: str) -> Components:
             repository=_string(awx_ui, "repository"),
             ref=_string(awx_ui, "ref"),
             delivery=_choice(awx_ui, "delivery", {"embedded", "sideloaded"}),
+        ),
+        awx_ui_bundle=AwxUiBundleSettings(
+            name=_string(awx_ui_bundle, "name"),
+            tag=_string(awx_ui_bundle, "tag"),
+            export_path=_string(awx_ui_bundle, "export_path"),
+        ),
+        awx_ee=AwxEeSettings(
+            base=_string(awx_ee, "base"),
+            name=_string(awx_ee, "name"),
+            tag=_string(awx_ee, "tag"),
+            platform=_string(awx_ee, "platform"),
         ),
         images=ImageSettings(
             base=_string(images, "base"),

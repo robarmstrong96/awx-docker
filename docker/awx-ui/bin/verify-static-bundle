@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Verify that an AWX UI static bundle directory exists and is non-empty.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+bundle_dir="${1:-/awx-ui-static}"
+
+test -d "$bundle_dir"
+find "$bundle_dir" -mindepth 1 -print -quit | grep -q .

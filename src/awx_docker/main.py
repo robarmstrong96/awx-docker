@@ -2,9 +2,15 @@ import dagger
 from dagger import dag, function, object_type
 
 from awx_docker.config import (
+    DEFAULT_AWX_EE_BASE_IMAGE,
+    DEFAULT_AWX_EE_IMAGE_NAME,
+    DEFAULT_AWX_EE_IMAGE_TAG,
+    DEFAULT_AWX_EE_PLATFORM,
     DEFAULT_AWX_PYTHON_CONSTRAINTS,
     DEFAULT_AWX_REF,
     DEFAULT_AWX_REPO,
+    DEFAULT_AWX_UI_BUNDLE_NAME,
+    DEFAULT_AWX_UI_BUNDLE_TAG,
     DEFAULT_AWX_UI_DELIVERY,
     DEFAULT_AWX_UI_REF,
     DEFAULT_AWX_UI_REPO,
@@ -195,6 +201,103 @@ class AwxDocker:
         )
         return verified.as_tarball()
 
+    @function
+    async def build_ui(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
+        awx_ui_ref: str = DEFAULT_AWX_UI_REF,
+        bundle_name: str = DEFAULT_AWX_UI_BUNDLE_NAME,
+        bundle_tag: str = DEFAULT_AWX_UI_BUNDLE_TAG,
+        resolved_revision: str = "",
+        platform: str = DEFAULT_PLATFORM,
+        base_image: str = DEFAULT_BASE_IMAGE,
+    ) -> dagger.Directory:
+        """Build the pinned AWX UI as a sideloadable static bundle."""
+        resolved_sha = resolved_revision or await self._resolve_upstream_revision(
+            source, upstream_repository, upstream_ref
+        )
+        image = self._build_ui_bundle_from_source(
+            source,
+            upstream_repository,
+            upstream_ref,
+            resolved_sha,
+            awx_ui_repository,
+            awx_ui_ref,
+            bundle_name,
+            bundle_tag,
+            platform,
+            base_image,
+        )
+        return image.directory("/awx-ui-static")
+
+    @function
+    async def export_ui(
+        self,
+        source: dagger.Directory,
+        upstream_repository: str = DEFAULT_AWX_REPO,
+        upstream_ref: str = DEFAULT_AWX_REF,
+        awx_ui_repository: str = DEFAULT_AWX_UI_REPO,
+        awx_ui_ref: str = DEFAULT_AWX_UI_REF,
+        bundle_name: str = DEFAULT_AWX_UI_BUNDLE_NAME,
+        bundle_tag: str = DEFAULT_AWX_UI_BUNDLE_TAG,
+        resolved_revision: str = "",
+        platform: str = DEFAULT_PLATFORM,
+        base_image: str = DEFAULT_BASE_IMAGE,
+    ) -> dagger.Directory:
+        """Build and return the AWX UI static bundle directory."""
+        return await self.build_ui(
+            source,
+            upstream_repository,
+            upstream_ref,
+            awx_ui_repository,
+            awx_ui_ref,
+            bundle_name,
+            bundle_tag,
+            resolved_revision,
+            platform,
+            base_image,
+        )
+
+    @function
+    async def build_ee(
+        self,
+        source: dagger.Directory,
+        image_name: str = DEFAULT_AWX_EE_IMAGE_NAME,
+        image_tag: str = DEFAULT_AWX_EE_IMAGE_TAG,
+        platform: str = DEFAULT_AWX_EE_PLATFORM,
+        ee_base_image: str = DEFAULT_AWX_EE_BASE_IMAGE,
+    ) -> dagger.Container:
+        """Build the custom AWX execution environment image."""
+        context = await self._build_ee_context(source)
+        return (
+            context.docker_build(
+                dockerfile="Containerfile",
+                platform=dagger.Platform(platform),
+                build_args=[dagger.BuildArg("EE_BASE_IMAGE", ee_base_image)],
+            )
+            .with_label("org.opencontainers.image.title", "Custom AWX execution environment")
+            .with_label("dev.awx-wrapper.ee.base-image", ee_base_image)
+            .with_label("dev.awx-wrapper.ee.image.name", f"{image_name}:{image_tag}")
+            .with_label("dev.awx-wrapper.ee.platform", platform)
+        )
+
+    @function
+    async def export_ee(
+        self,
+        source: dagger.Directory,
+        image_ref: str = f"{DEFAULT_AWX_EE_IMAGE_NAME}:{DEFAULT_AWX_EE_IMAGE_TAG}",
+        platform: str = DEFAULT_AWX_EE_PLATFORM,
+        ee_base_image: str = DEFAULT_AWX_EE_BASE_IMAGE,
+    ) -> dagger.File:
+        """Build and verify the custom AWX EE image, then return it as an OCI tarball."""
+        image_name, image_tag = self._split_image_ref(image_ref)
+        image = await self.build_ee(source, image_name, image_tag, platform, ee_base_image)
+        verified = self._verify_ee_image(image)
+        return verified.as_tarball()
+
     def _build_image_from_source(
         self,
         source: dagger.Directory,
@@ -244,6 +347,69 @@ class AwxDocker:
             .with_label("dev.awx-wrapper.python.constraints", python_constraints)
         )
 
+    def _build_ui_bundle_from_source(
+        self,
+        source: dagger.Directory,
+        awx_repo: str,
+        awx_ref: str,
+        resolved_sha: str,
+        awx_ui_repo: str,
+        awx_ui_ref: str,
+        bundle_name: str,
+        bundle_tag: str,
+        platform: str,
+        base_image: str,
+    ) -> dagger.Container:
+        return (
+            source.docker_build(
+                dockerfile="docker/awx-ui/Dockerfile",
+                platform=dagger.Platform(platform),
+                build_args=[
+                    dagger.BuildArg("CENTOS_STREAM_IMAGE", base_image),
+                    dagger.BuildArg("AWX_REPO", awx_repo),
+                    dagger.BuildArg("AWX_REF", resolved_sha),
+                    dagger.BuildArg("AWX_REQUESTED_REF", awx_ref),
+                    dagger.BuildArg("AWX_UI_REPO", awx_ui_repo),
+                    dagger.BuildArg("AWX_UI_REF", awx_ui_ref),
+                ],
+            )
+            .with_label("org.opencontainers.image.title", "AWX UI static bundle")
+            .with_label("dev.awx-wrapper.awx.repo", awx_repo)
+            .with_label("dev.awx-wrapper.awx.ref", awx_ref)
+            .with_label("dev.awx-wrapper.awx.revision", resolved_sha)
+            .with_label("dev.awx-wrapper.awx-ui.repo", awx_ui_repo)
+            .with_label("dev.awx-wrapper.awx-ui.ref", awx_ui_ref)
+            .with_label("dev.awx-wrapper.awx-ui.bundle.name", f"{bundle_name}:{bundle_tag}")
+            .with_label("dev.awx-wrapper.base.image", base_image)
+            .with_label("dev.awx-wrapper.platform", platform)
+        )
+
+    async def _build_ee_context(self, source: dagger.Directory) -> dagger.Directory:
+        return (
+            self._python(source)
+            .with_exec(
+                [
+                    "uv",
+                    "run",
+                    "ansible-builder",
+                    "create",
+                    "-f",
+                    "docker/awx-ee/execution-environment.yml",
+                    "--context",
+                    "build/awx-ee-context",
+                ]
+            )
+            .directory("build/awx-ee-context")
+        )
+
+    def _verify_ee_image(self, image: dagger.Container) -> dagger.Container:
+        return (
+            image.with_exec(["python", "--version"])
+            .with_exec(["ansible", "--version"])
+            .with_exec(["ansible-runner", "--version"])
+            .with_exec(["ansible-galaxy", "collection", "list"])
+        )
+
     def _python(self, source: dagger.Directory) -> dagger.Container:
         return (
             dag.container()
@@ -286,11 +452,13 @@ class AwxDocker:
         ctr = ctr.with_exec(["uv", "run", "ruff", "format", "--check", "."])
         ctr = ctr.with_exec(["uv", "run", "ruff", "check", "."])
         ctr = ctr.with_exec(["shellcheck", "scripts/runtime-entrypoint.sh"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx-ui/bin/export-static-bundle"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx-ui/bin/install-build-deps"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx-ui/bin/prepare-delivery"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx-ui/bin/prepare-source"])
+        ctr = ctr.with_exec(["shellcheck", "docker/awx-ui/bin/verify-static-bundle"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-rpms"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-awx-ui-build-deps"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-source"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-ui-delivery"])
-        ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-awx-ui-source"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/install-awx-python-deps"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/synthesize-awx-dist-info"])
         ctr = ctr.with_exec(["shellcheck", "docker/awx/bin/prepare-runtime-layout"])

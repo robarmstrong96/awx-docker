@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
-    script = (ROOT / "docker/awx/bin/prepare-awx-ui-delivery").read_text()
+    script = (ROOT / "docker/awx-ui/bin/prepare-delivery").read_text()
 
     prepare = script.index("prepare-awx-ui-source")
     build = script.index("make ui")
@@ -16,11 +16,12 @@ def test_dockerfile_prepares_awx_ui_source_before_make_ui() -> None:
 def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
     dockerfile = (ROOT / "docker/awx/Dockerfile").read_text()
     dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
-    delivery_script = (ROOT / "docker/awx/bin/prepare-awx-ui-delivery").read_text()
-    deps_script = (ROOT / "docker/awx/bin/install-awx-ui-build-deps").read_text()
+    delivery_script = (ROOT / "docker/awx-ui/bin/prepare-delivery").read_text()
+    deps_script = (ROOT / "docker/awx-ui/bin/install-build-deps").read_text()
     verifier = (ROOT / "docker/awx/bin/verify-runtime-contract").read_text()
 
     assert "ARG AWX_UI_DELIVERY=embedded" in dockerfile
+    assert "COPY docker/awx-ui/bin/prepare-delivery" in dockerfile
     assert "RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps" in dockerfile
     assert "RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery" in dockerfile
     assert 'case "$AWX_UI_DELIVERY"' not in dockerfile
@@ -31,11 +32,46 @@ def test_dockerfile_supports_sideloaded_ui_delivery() -> None:
 
 
 def test_awx_ui_prepare_script_fetches_requested_ref_without_pull() -> None:
-    script = (ROOT / "docker/awx/bin/prepare-awx-ui-source").read_text()
+    script = (ROOT / "docker/awx-ui/bin/prepare-source").read_text()
 
     assert 'git -C "$ui_src" fetch --depth 1 origin "$AWX_UI_REF"' in script
     assert "printf 'embedded\\n'" in script
     assert "git pull" not in script
+
+
+def test_awx_ui_bundle_dockerfile_exports_static_assets() -> None:
+    dockerfile = (ROOT / "docker/awx-ui/Dockerfile").read_text()
+    exporter = (ROOT / "docker/awx-ui/bin/export-static-bundle").read_text()
+
+    assert "RUN /usr/local/libexec/awx-docker/export-awx-ui-static-bundle" in dockerfile
+    assert "RUN /usr/local/libexec/awx-docker/verify-awx-ui-static-bundle" in dockerfile
+    assert 'bundle_dir="${2:-/awx-ui-static}"' in exporter
+
+
+def test_awx_ee_definition_pins_core_and_runner_once() -> None:
+    definition = (ROOT / "docker/awx-ee/execution-environment.yml").read_text()
+    python_requirements = [
+        line.strip()
+        for line in (ROOT / "docker/awx-ee/requirements.txt").read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+
+    assert "version: 3" in definition
+    assert "name: quay.io/ansible/ansible-runner:stable-2.15-devel" in definition
+    assert "package_pip: ansible-core==2.15.13" in definition
+    assert "package_pip: ansible-runner==2.4.0" in definition
+    assert not any(line.startswith("ansible-core==") for line in python_requirements)
+    assert not any(line.startswith("ansible-runner==") for line in python_requirements)
+
+
+def test_dagger_exposes_ui_and_ee_builds() -> None:
+    dagger_module = (ROOT / "src/awx_docker/main.py").read_text()
+
+    assert "async def build_ui(" in dagger_module
+    assert "async def export_ui(" in dagger_module
+    assert "async def build_ee(" in dagger_module
+    assert "async def export_ee(" in dagger_module
+    assert "ansible-builder" in dagger_module
 
 
 def test_dockerfile_passes_python_constraints_to_awx_requirements() -> None:
