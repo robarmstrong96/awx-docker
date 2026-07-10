@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Check AWX HTTP readiness plus supervisor and receptor process health.
+# Check AWX HTTP readiness, UI asset wiring, supervisor, and receptor health.
 #
 # Comment style:
 # https://google.github.io/styleguide/shellguide.html#comments
@@ -10,9 +10,28 @@
 set -euo pipefail
 
 healthcheck_port="${AWX_HEALTHCHECK_PORT:-8013}"
+healthcheck_ui="${AWX_HEALTHCHECK_UI:-1}"
 receptor_socket="${RECEPTORCTL_SOCKET:-/var/run/awx-receptor/receptor.sock}"
 
 wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}/api/"
+
+if [[ "$healthcheck_ui" == "1" ]]; then
+	root_html="$(
+		wget -q -T 10 -O - "http://127.0.0.1:${healthcheck_port}/"
+	)"
+	ui_script="$(
+		printf '%s' "$root_html" |
+			sed -n 's/.*src="\([^"]*\/static\/awx\/[^"]*\.js\)".*/\1/p' |
+			head -n 1
+	)"
+
+	if [[ -z "$ui_script" ]]; then
+		printf 'AWX UI shell does not reference a /static/awx JavaScript asset\n' >&2
+		exit 1
+	fi
+
+	wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}${ui_script}"
+fi
 
 supervisorctl -c /etc/supervisord.conf status |
 	awk 'NF >= 2 && $2 != "RUNNING" { bad=1 } END { exit bad }'
