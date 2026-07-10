@@ -16,18 +16,20 @@ receptor_socket="${RECEPTORCTL_SOCKET:-/var/run/awx-receptor/receptor.sock}"
 wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}/api/"
 
 if [[ "$healthcheck_ui" == "1" ]]; then
-	root_html="$(
-		wget -q -T 10 -O - "http://127.0.0.1:${healthcheck_port}/"
-	)"
+	root_html="$(wget -q -T 10 -O - "http://127.0.0.1:${healthcheck_port}/")"
 	ui_script="$(
 		printf '%s' "$root_html" |
-			sed -n 's/.*src="\([^"]*\/static\/awx\/[^"]*\.js\)".*/\1/p' |
+			sed -n 's/.*src="\([^"]*\.js\)".*/\1/p' |
 			head -n 1
 	)"
 
 	if [[ -z "$ui_script" ]]; then
-		printf 'AWX UI shell does not reference a /static/awx JavaScript asset\n' >&2
+		printf 'AWX UI shell does not reference a JavaScript asset\n' >&2
 		exit 1
+	fi
+
+	if [[ "$ui_script" != /* ]]; then
+		ui_script="/$ui_script"
 	fi
 
 	wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}${ui_script}"
