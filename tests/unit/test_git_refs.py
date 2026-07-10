@@ -1,34 +1,59 @@
-import subprocess
+"""Tests for resolving upstream AWX Git refs."""
 
-import pytest
+import subprocess
+from pathlib import Path
 
 from awx_docker.git_refs import resolve_ref
 
 
+def git(repo: Path, *args: str) -> str:
+    """Run a Git command in a test repository.
+
+    Parameters
+    ----------
+    repo : pathlib.Path
+        Repository directory where the command should run.
+    *args : str
+        Git arguments passed after the ``git`` executable.
+
+    Returns
+    -------
+    str
+        Stripped command stdout.
+    """
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
 def test_resolve_ref_returns_full_sha_without_network() -> None:
-    sha = "a" * 40
-    assert resolve_ref("https://github.com/ansible/awx.git", sha) == sha
+    """A full SHA should pass through without running git ls-remote."""
+    commit_sha = "a" * 40
+    assert resolve_ref("https://github.com/ansible/awx.git", commit_sha) == commit_sha
 
 
-@pytest.mark.parametrize(
-    ("stdout", "expected"),
-    [
-        ("1" * 40 + "\trefs/heads/devel\n", "1" * 40),
-        ("2" * 40 + "\trefs/tags/1.0.0\n", "2" * 40),
-        (
-            "3" * 40 + "\trefs/tags/1.0.0\n" + "4" * 40 + "\trefs/tags/1.0.0^{}\n",
-            "4" * 40,
-        ),
-    ],
-)
-def test_resolve_ref_prefers_branch_tag_and_peeled_tag(
-    monkeypatch: pytest.MonkeyPatch,
-    stdout: str,
-    expected: str,
-) -> None:
-    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(args=["git"], returncode=0, stdout=stdout, stderr="")
+def test_resolve_ref_prefers_peeled_annotated_tag(tmp_path: Path) -> None:
+    """Annotated tags should resolve to the commit, not the tag object.
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
 
-    assert resolve_ref("https://github.com/ansible/awx.git", "devel") == expected
+    git(repo, "init")
+    git(repo, "config", "user.email", "awx-docker@example.invalid")
+    git(repo, "config", "user.name", "AWX Docker Tests")
+
+    git(repo, "commit", "--allow-empty", "-m", "branch target")
+    expected = git(repo, "rev-parse", "HEAD")
+    git(repo, "tag", "-a", "annotated", "-m", "annotated tag")
+
+    assert resolve_ref(str(repo), "annotated") == expected

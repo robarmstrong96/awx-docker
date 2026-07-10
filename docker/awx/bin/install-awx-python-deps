@@ -1,9 +1,63 @@
 #!/usr/bin/env bash
+#
+# Install upstream AWX Python requirements, optionally constrained by the
+# wrapper-provided AWX_PYTHON_CONSTRAINTS YAML file.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
 set -euo pipefail
+
+#######################################
+# Render the wrapper YAML constraints file into pip constraints syntax.
+# Globals:
+#   None
+# Arguments:
+#   Source YAML file.
+#   Destination pip constraints file.
+# Outputs:
+#   Writes pip constraint lines to the destination file.
+# Returns:
+#   0 on success, non-zero when rendering fails.
+#######################################
+render_yaml_constraints() {
+	local source="${1:?source YAML path required}"
+	local target="${2:?target constraints path required}"
+
+	awk '
+		/^[[:space:]]*(#|$)/ { next }
+		/^constraints:[[:space:]]*\[\][[:space:]]*$/ { next }
+		/^constraints:[[:space:]]*$/ { in_constraints = 1; next }
+		in_constraints && /^[[:space:]]*-[[:space:]]*/ {
+			sub(/^[[:space:]]*-[[:space:]]*/, "")
+			gsub(/^["'\'']|["'\'']$/, "")
+			print
+			next
+		}
+		in_constraints && /^[^[:space:]]/ { in_constraints = 0 }
+	' "$source" >"$target"
+}
+
+if [[ "${1:-}" == "--render-constraints" ]]; then
+	render_yaml_constraints "${2:?source YAML path required}" "${3:?target constraints path required}"
+	exit 0
+fi
 
 install -d -m 0700 ~/.ssh
 if ! ssh-keyscan -T 10 github.com >~/.ssh/known_hosts; then
 	:
+fi
+
+if [[ -n "${AWX_PYTHON_CONSTRAINTS:-}" ]]; then
+	if [[ ! -f "$AWX_PYTHON_CONSTRAINTS" ]]; then
+		printf 'AWX Python constraints file not found: %s\n' "$AWX_PYTHON_CONSTRAINTS" >&2
+		exit 1
+	fi
+	pip_constraints="$(mktemp)"
+	render_yaml_constraints "$AWX_PYTHON_CONSTRAINTS" "$pip_constraints"
+	export PIP_CONSTRAINT="$pip_constraints"
 fi
 
 pip3.12 install -vv --no-cache-dir build

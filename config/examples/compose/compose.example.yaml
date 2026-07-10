@@ -1,0 +1,78 @@
+# Embedded UI example.
+#
+# This is the normal path. The AWX image already contains the UI files.
+# Use this when the image was built with AWX_UI_DELIVERY=embedded.
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${AWX_DB_NAME:-awx}"
+      POSTGRES_PASSWORD: "${AWX_DB_PASSWORD:?Set AWX_DB_PASSWORD in .env}"
+      POSTGRES_USER: "${AWX_DB_USER:-awx}"
+    volumes:
+      - awx-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  awx:
+    # Embedded AWX container.
+    # No UI volume is needed here.
+    image: "${AWX_IMAGE:-ghcr.io/robarmstrong96/awx-docker:production}"
+    hostname: awx-1
+    privileged: true
+    cgroup: host
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${AWX_HTTP_PORT:-8013}:8013"
+    environment:
+      AWX_BROKER_URL: "${AWX_BROKER_URL:-redis://redis:6379/0}"
+      AWX_BROADCAST_WEBSOCKET_SECRET: "${AWX_BROADCAST_WEBSOCKET_SECRET:?Set AWX_BROADCAST_WEBSOCKET_SECRET in .env}"
+      AWX_CACHE_URL: "${AWX_CACHE_URL:-redis://redis:6379/1}"
+      AWX_CSRF_TRUSTED_ORIGIN: "${AWX_CSRF_TRUSTED_ORIGIN:-http://localhost:8013}"
+      AWX_DB_HOST: "${AWX_DB_HOST:-postgres}"
+      AWX_DB_NAME: "${AWX_DB_NAME:-awx}"
+      AWX_DB_PASSWORD: "${AWX_DB_PASSWORD:?Set AWX_DB_PASSWORD in .env}"
+      AWX_DB_PORT: "${AWX_DB_PORT:-5432}"
+      AWX_DB_SSLMODE: "${AWX_DB_SSLMODE:-disable}"
+      AWX_DB_USER: "${AWX_DB_USER:-awx}"
+      AWX_GROUP_QUEUES: tower
+      AWX_LOGGING_MODE: stdout
+      AWX_SECRET_KEY: "${AWX_SECRET_KEY:?Set AWX_SECRET_KEY in .env}"
+      AWX_SYSTEM_UUID: "${AWX_SYSTEM_UUID:-00000000-0000-0000-0000-000000000000}"
+      CONTROL_PLANE_NODE_COUNT: "1"
+      DJANGO_SUPERUSER_PASSWORD: "${AWX_ADMIN_PASSWORD:?Set AWX_ADMIN_PASSWORD in .env}"
+      EXECUTION_NODE_COUNT: "0"
+      MAIN_NODE_TYPE: "${AWX_MAIN_NODE_TYPE:-hybrid}"
+      OS: "${AWX_HOST_OS:-Operating System: compose-example}"
+      RECEPTORCTL_SOCKET: /var/run/awx-receptor/receptor.sock
+      RUN_MIGRATIONS: "1"
+      SDB_HOST: 0.0.0.0
+      SDB_PORT: "7899"
+      UWSGI_MOUNT_PATH: /
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/awx-wrapper-healthcheck"]
+      interval: 30s
+      timeout: 15s
+      start_period: 5m
+      retries: 5
+
+volumes:
+  awx-postgres:

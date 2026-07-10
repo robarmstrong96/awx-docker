@@ -1,0 +1,134 @@
+# Sideloaded UI example.
+#
+# Use this when the AWX image was built with AWX_UI_DELIVERY=sideloaded.
+# Build/export the UI bundle first, then mount it into the AWX container below.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: awx-sideloaded-postgres-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: awx-docker-sideloaded-example
+  labels:
+    app.kubernetes.io/name: awx-docker
+    app.kubernetes.io/part-of: awx-docker-example
+spec:
+  restartPolicy: Always
+  containers:
+    - name: postgres
+      image: docker.io/library/postgres:17
+      env:
+        - name: POSTGRES_DB
+          value: awx
+        - name: POSTGRES_PASSWORD
+          value: change-me-db-password
+        - name: POSTGRES_USER
+          value: awx
+      ports:
+        - containerPort: 5432
+          protocol: TCP
+      volumeMounts:
+        - name: awx-postgres-data
+          mountPath: /var/lib/postgresql/data
+
+    - name: redis
+      image: docker.io/library/redis:7-alpine
+      ports:
+        - containerPort: 6379
+          protocol: TCP
+
+    - name: awx
+      # Sideloaded AWX container.
+      # The image does not contain UI files, so the static bundle is mounted.
+      image: awx-devel:sideloaded
+      command:
+        - /bin/bash
+        - -lc
+      args:
+        - |
+          until pg_isready -h 127.0.0.1 -p 5432 -U "$AWX_DB_USER" -d "$AWX_DB_NAME"; do
+            sleep 2
+          done
+          until nc -z 127.0.0.1 6379; do
+            sleep 2
+          done
+          exec /usr/local/bin/awx-wrapper-entrypoint /usr/bin/launch_awx.sh supervisord --pidfile=/tmp/supervisor_pid -n
+      env:
+        - name: AWX_BROKER_URL
+          value: redis://127.0.0.1:6379/0
+        - name: AWX_BROADCAST_WEBSOCKET_SECRET
+          value: change-me-broadcast-secret
+        - name: AWX_CACHE_URL
+          value: redis://127.0.0.1:6379/1
+        - name: AWX_CSRF_TRUSTED_ORIGIN
+          value: http://localhost:8015
+        - name: AWX_DB_HOST
+          value: 127.0.0.1
+        - name: AWX_DB_NAME
+          value: awx
+        - name: AWX_DB_PASSWORD
+          value: change-me-db-password
+        - name: AWX_DB_PORT
+          value: "5432"
+        - name: AWX_DB_SSLMODE
+          value: disable
+        - name: AWX_DB_USER
+          value: awx
+        - name: AWX_GROUP_QUEUES
+          value: tower
+        - name: AWX_LOGGING_MODE
+          value: stdout
+        - name: AWX_SECRET_KEY
+          value: change-me-secret-key
+        - name: AWX_SYSTEM_UUID
+          value: 00000000-0000-0000-0000-000000000000
+        - name: CONTROL_PLANE_NODE_COUNT
+          value: "1"
+        - name: DJANGO_SUPERUSER_PASSWORD
+          value: change-me-admin-password
+        - name: EXECUTION_NODE_COUNT
+          value: "0"
+        - name: MAIN_NODE_TYPE
+          value: hybrid
+        - name: OS
+          value: "Operating System: podman-kube-sideloaded-example"
+        - name: RECEPTORCTL_SOCKET
+          value: /var/run/awx-receptor/receptor.sock
+        - name: RUN_MIGRATIONS
+          value: "1"
+        - name: SDB_HOST
+          value: 0.0.0.0
+        - name: SDB_PORT
+          value: "7899"
+        - name: UWSGI_MOUNT_PATH
+          value: /
+      ports:
+        - containerPort: 8013
+          hostPort: 8015
+          protocol: TCP
+      securityContext:
+        privileged: true
+      volumeMounts:
+        # Point this at the directory from:
+        # dagger call export-ui --source=. export --path=build/out/awx-ui-static
+        - name: awx-ui-static
+          mountPath: /var/lib/awx/public/static
+          readOnly: true
+
+  volumes:
+    - name: awx-postgres-data
+      persistentVolumeClaim:
+        claimName: awx-sideloaded-postgres-data
+    - name: awx-ui-static
+      hostPath:
+        # Replace this with a real absolute path on your host.
+        path: /absolute/path/to/build/out/awx-ui-static
+        type: Directory

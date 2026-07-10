@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Check AWX HTTP readiness plus supervisor and receptor process health.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+healthcheck_port="${AWX_HEALTHCHECK_PORT:-8013}"
+receptor_socket="${RECEPTORCTL_SOCKET:-/var/run/awx-receptor/receptor.sock}"
+
+wget -q -T 10 -O /dev/null "http://127.0.0.1:${healthcheck_port}/api/"
+
+supervisorctl -c /etc/supervisord.conf status |
+	awk 'NF >= 2 && $2 != "RUNNING" { bad=1 } END { exit bad }'
+
+receptorctl --socket "$receptor_socket" status >/dev/null 2>&1

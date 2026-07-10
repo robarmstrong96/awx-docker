@@ -1,0 +1,35 @@
+schema_version = 1
+
+[awx]
+repository = "https://github.com/ansible/awx.git"
+ref = "devel"
+
+[awx_ui]
+repository = "https://github.com/ansible/ansible-ui.git"
+ref = "v2.4.313"
+delivery = "embedded"
+
+[awx_ui_bundle]
+name = "awx-ui-static"
+tag = "v2.4.313"
+export_path = "build/out/awx-ui-static"
+
+[awx_ee]
+base = "quay.io/ansible/ansible-runner:stable-2.15-devel"
+name = "awx-ee"
+tag = "devel"
+platform = "linux/amd64"
+
+[images]
+base = "quay.io/centos/centos:stream9"
+receptor = "quay.io/ansible/receptor:devel"
+name = "awx-devel"
+tag = "devel"
+platform = "linux/amd64"
+
+[python]
+constraints = "awx-python.yaml"
+
+[tooling]
+python = "3.12"
+uv_image = "ghcr.io/astral-sh/uv:python3.12-bookworm-slim"

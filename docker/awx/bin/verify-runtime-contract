@@ -1,55 +1,45 @@
 #!/usr/bin/env bash
+#
+# Verify the built image contains the AWX source, runtime helpers, Python
+# metadata, and source-license files expected by this wrapper.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
 set -euo pipefail
 
 image_ref="${1:-awx-devel:devel}"
-evidence_dir="${EVIDENCE_DIR:-/tmp/awx-docker-evidence}"
 
 test -f /awx_devel/manage.py
 test -f /awx_devel/LICENSE.md
 test ! -e /awx_devel/.git
+test -f /awx_devel/awx/ui/.awx_ui_delivery
+test -f /awx_devel/awx/ui/.awx_ui_repo
+test -f /awx_devel/awx/ui/.awx_ui_requested_ref
 test -x /usr/local/bin/awx-wrapper-entrypoint
+test -x /usr/local/bin/awx-wrapper-healthcheck
 test -f /etc/supervisord.conf
 test -x /usr/local/bin/awx-manage
 
-/var/lib/awx/venv/awx/bin/python - <<'PY'
-from importlib.metadata import distribution
-
-dist = distribution("awx")
-assert any(ep.group == "console_scripts" and ep.name == "awx-manage" for ep in dist.entry_points)
-import awx
-
-assert awx.__version__
-PY
+/var/lib/awx/venv/awx/bin/python /usr/local/libexec/awx-docker/verify-awx-python-contract
 
 test -f /usr/share/licenses/awx-wrapper/AWX-LICENSE.md
 test -f /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF
 test -f /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION
 
-source_revision="$(cat /usr/share/licenses/awx-wrapper/AWX-SOURCE-REVISION)"
-requested_ref="$(cat /usr/share/licenses/awx-wrapper/AWX-REQUESTED-REF)"
+case "${AWX_UI_DELIVERY:-embedded}" in
+	embedded)
+		test -f /awx_devel/awx/ui/.awx_ui_source_revision
+		test ! -e /awx_devel/awx/ui/src/.git
+		;;
+	sideloaded)
+		;;
+	*)
+		printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2
+		exit 1
+		;;
+esac
 
-install -d -m 0755 "$evidence_dir"
-cat >"$evidence_dir/image-verification.json" <<EOF
-{
-  "awx": {
-    "git_metadata": "absent",
-    "requested_ref": "$requested_ref",
-    "source_revision": "$source_revision"
-  },
-  "image": {
-    "ref": "$image_ref"
-  },
-  "schema_version": "awx-docker.image-verification/v1",
-  "status": "passed"
-}
-EOF
-
-cat >"$evidence_dir/image-verification.md" <<EOF
-# AWX Image Verification
-
-- Image: \`$image_ref\`
-- AWX requested ref: \`$requested_ref\`
-- AWX source revision: \`$source_revision\`
-- Embedded AWX git metadata: absent
-- Status: passed
-EOF
+printf 'runtime-contract: ok (%s)\n' "$image_ref"

@@ -14,6 +14,14 @@ name: Publish
       image_ref:
         description: Optional full image reference (for example ghcr.io/<owner>/<repo>:<tag>)
         required: false
+      awx_ui_ref:
+        description: ansible-ui tag or commit to build
+        required: true
+        default: v2.4.313
+      awx_ui_delivery:
+        description: AWX UI delivery mode, embedded or sideloaded
+        required: true
+        default: embedded
 
 permissions:
   contents: read
@@ -51,6 +59,8 @@ jobs:
             export
             --source=.
             --upstream-ref=${{ inputs.upstream_ref }}
+            --awx-ui-ref=${{ inputs.awx_ui_ref }}
+            --awx-ui-delivery=${{ inputs.awx_ui_delivery }}
             --image-ref=${{ steps.image.outputs.ref }}
             export --path=build/out/awx-devel.tar
 

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# Install build dependencies needed by the selected AWX UI delivery mode.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+: "${AWX_UI_DELIVERY:=embedded}"
+
+case "$AWX_UI_DELIVERY" in
+	embedded)
+		INSTALL_RPMS_ENABLE_NODEJS18=true \
+			/usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
+		;;
+	sideloaded)
+		;;
+	*)
+		printf 'unsupported AWX_UI_DELIVERY: %s\n' "$AWX_UI_DELIVERY" >&2
+		exit 1
+		;;
+esac

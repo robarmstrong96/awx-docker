@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# Replace upstream AWX's default ansible-ui checkout with the configured UI ref
+# before running the AWX UI build.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+: "${AWX_UI_REPO:?AWX_UI_REPO is required}"
+: "${AWX_UI_REF:?AWX_UI_REF is required}"
+
+ui_src=/tmp/src/awx/ui/src
+
+rm -rf "$ui_src"
+git -c init.defaultBranch=main init "$ui_src"
+git -C "$ui_src" remote add origin "$AWX_UI_REPO"
+git -C "$ui_src" fetch --depth 1 origin "$AWX_UI_REF"
+git -C "$ui_src" checkout --detach FETCH_HEAD
+git -C "$ui_src" rev-parse HEAD >/tmp/src/awx/ui/.awx_ui_source_revision
+printf '%s\n' "$AWX_UI_REPO" >/tmp/src/awx/ui/.awx_ui_repo
+printf '%s\n' "$AWX_UI_REF" >/tmp/src/awx/ui/.awx_ui_requested_ref
+printf 'embedded\n' >/tmp/src/awx/ui/.awx_ui_delivery

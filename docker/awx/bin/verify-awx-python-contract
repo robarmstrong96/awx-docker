@@ -1,0 +1,45 @@
+from importlib.metadata import Distribution, distribution
+
+
+def check_awx_distribution_metadata() -> Distribution:
+    """Confirm AWX package metadata is visible in the runtime Python environment."""
+    return distribution("awx")
+
+
+def check_awx_manage_entry_point(dist: Distribution) -> None:
+    """Confirm the installed AWX metadata advertises the awx-manage console script."""
+    for entry_point in dist.entry_points:
+        if entry_point.group == "console_scripts" and entry_point.name == "awx-manage":
+            return
+
+    msg = "AWX distribution metadata does not include the awx-manage console script"
+    raise RuntimeError(msg)
+
+
+def check_awx_module_importable() -> object:
+    """Confirm the awx module imports from the runtime Python environment."""
+    import awx
+
+    return awx
+
+
+def check_awx_version_available(awx_module: object) -> None:
+    """Confirm the imported awx module exposes a non-empty version."""
+    version = getattr(awx_module, "__version__", "")
+    if version:
+        return
+
+    msg = "imported awx module does not expose __version__"
+    raise RuntimeError(msg)
+
+
+def main() -> int:
+    dist = check_awx_distribution_metadata()
+    check_awx_manage_entry_point(dist)
+    awx_module = check_awx_module_importable()
+    check_awx_version_available(awx_module)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

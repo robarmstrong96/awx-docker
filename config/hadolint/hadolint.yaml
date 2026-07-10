@@ -1,0 +1,17 @@
+# Hadolint rule reference:
+# https://github.com/hadolint/hadolint#rules
+ignored:
+  # AWX starts as root here.
+  - DL3002
+
+  # Image names come from build args.
+  - DL3006
+
+  # Python pins live in AWX requirements/config.
+  - DL3013
+
+  # Do not pin CentOS Stream RPMs.
+  - DL3041
+
+  # Separate RUN steps are easier to debug.
+  - DL3059

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# Copy built AWX UI static assets into an exportable bundle directory.
+#
+# Comment style:
+# https://google.github.io/styleguide/shellguide.html#comments
+#
+# Why set -euo pipefail:
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425?permalink_comment_id=3799230
+set -euo pipefail
+
+static_dir="${1:-/tmp/src/awx/public/static}"
+bundle_dir="${2:-/awx-ui-static}"
+
+test -d "$static_dir"
+rm -rf -- "$bundle_dir"
+install -d -m 0755 "$bundle_dir"
+cp -a "$static_dir"/. "$bundle_dir"/

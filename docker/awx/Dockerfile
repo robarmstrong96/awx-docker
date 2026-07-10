@@ -3,12 +3,19 @@
 
 # ----- Build arguments --------------------------------------------------------
 
+# Dagger normally passes these from config/components/components.toml. Keep the
+# defaults here for direct docker builds; Docker cannot read TOML before
+# ARG/FROM evaluation... sadly.
 ARG CENTOS_STREAM_IMAGE=quay.io/centos/centos:stream9
 ARG AWX_REPO=https://github.com/ansible/awx.git
 ARG AWX_REF=devel
 ARG AWX_REQUESTED_REF=devel
 ARG AWX_SOURCE_REVISION=unknown
+ARG AWX_UI_REPO=https://github.com/ansible/ansible-ui.git
+ARG AWX_UI_REF=v2.4.313
+ARG AWX_UI_DELIVERY=embedded
 ARG RECEPTOR_IMAGE=quay.io/ansible/receptor:devel
+ARG AWX_PYTHON_CONSTRAINTS=awx-python.yaml
 
 # ----- Receptor binary --------------------------------------------------------
 
@@ -31,16 +38,21 @@ RUN /usr/local/libexec/awx-docker/prepare-awx-source
 # ----- UI assets --------------------------------------------------------------
 
 FROM ${CENTOS_STREAM_IMAGE} AS ui-builder
+ARG AWX_UI_REPO
+ARG AWX_UI_REF
+ARG AWX_UI_DELIVERY
 
 USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
-COPY docker/awx/packages/ui-builder.rpms /tmp/packages.rpms
-RUN INSTALL_RPMS_ENABLE_NODEJS18=true \
-    /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
+COPY docker/awx-ui/bin/install-build-deps /usr/local/libexec/awx-docker/install-awx-ui-build-deps
+COPY docker/awx-ui/bin/prepare-delivery /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
+COPY docker/awx-ui/bin/prepare-source /usr/local/libexec/awx-docker/prepare-awx-ui-source
+COPY docker/awx-ui/packages/build.rpms /tmp/packages.rpms
+RUN /usr/local/libexec/awx-docker/install-awx-ui-build-deps
 
 COPY --from=awx-source /awx-src /tmp/src
 WORKDIR /tmp/src
-RUN make ui
+RUN /usr/local/libexec/awx-docker/prepare-awx-ui-delivery
 
 # ----- Python packages --------------------------------------------------------
 
@@ -60,6 +72,7 @@ RUN /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
 
 ARG VERSION
 ARG SETUPTOOLS_SCM_PRETEND_VERSION
+ARG AWX_PYTHON_CONSTRAINTS
 
 # Copy only the files needed to install Python packages.
 # The finished Python environment is copied into the final image later.
@@ -69,9 +82,11 @@ COPY --from=awx-source /awx-src/requirements/requirements.txt /tmp/requirements/
 COPY --from=awx-source /awx-src/requirements/requirements_tower_uninstall.txt /tmp/requirements/requirements_tower_uninstall.txt
 COPY --from=awx-source /awx-src/requirements/requirements_git.txt /tmp/requirements/requirements_git.txt
 COPY --from=awx-source /awx-src/requirements/requirements_dev.txt /tmp/requirements/requirements_dev.txt
+COPY config/awx/constraints /tmp/requirements/constraints
 
 WORKDIR /tmp
-RUN --mount=type=ssh /usr/local/libexec/awx-docker/install-awx-python-deps
+RUN --mount=type=ssh AWX_PYTHON_CONSTRAINTS="/tmp/requirements/constraints/${AWX_PYTHON_CONSTRAINTS}" \
+    /usr/local/libexec/awx-docker/install-awx-python-deps
 
 # ----- Final image ------------------------------------------------------------
 
@@ -80,13 +95,18 @@ FROM ${CENTOS_STREAM_IMAGE}
 ARG AWX_REPO
 ARG AWX_REQUESTED_REF
 ARG AWX_SOURCE_REVISION
+ARG AWX_UI_REPO
+ARG AWX_UI_REF
+ARG AWX_UI_DELIVERY
 ARG RECEPTOR_IMAGE
+ARG AWX_PYTHON_CONSTRAINTS
 ARG INSTALL_PYTHON_DEBUGINFO=false
 
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
     AWX_LOGGING_MODE=stdout \
+    AWX_UI_DELIVERY="${AWX_UI_DELIVERY}" \
     HOME=/var/lib/awx \
     PATH="/var/lib/awx/venv/awx/bin/:${PATH}" \
     SETUPTOOLS_SCM_PRETEND_VERSION="0.0.dev0+g${AWX_SOURCE_REVISION}" \
@@ -100,7 +120,11 @@ LABEL org.opencontainers.image.title="Unofficial AWX proof-of-concept image" \
       dev.awx-wrapper.awx.repo="${AWX_REPO}" \
       dev.awx-wrapper.awx.requested-ref="${AWX_REQUESTED_REF}" \
       dev.awx-wrapper.awx.resolved-revision="${AWX_SOURCE_REVISION}" \
-      dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}"
+      dev.awx-wrapper.awx-ui.repo="${AWX_UI_REPO}" \
+      dev.awx-wrapper.awx-ui.ref="${AWX_UI_REF}" \
+      dev.awx-wrapper.awx-ui.delivery="${AWX_UI_DELIVERY}" \
+      dev.awx-wrapper.receptor.image="${RECEPTOR_IMAGE}" \
+      dev.awx-wrapper.python.constraints="${AWX_PYTHON_CONSTRAINTS}"
 
 USER root
 
@@ -109,8 +133,9 @@ USER root
 COPY docker/awx/bin/install-rpms /usr/local/libexec/awx-docker/install-rpms
 COPY docker/awx/bin/synthesize-awx-dist-info /usr/local/libexec/awx-docker/synthesize-awx-dist-info
 COPY docker/awx/bin/prepare-runtime-layout /usr/local/libexec/awx-docker/prepare-runtime-layout
+COPY docker/awx/bin/verify-awx-python-contract /usr/local/libexec/awx-docker/verify-awx-python-contract
 COPY docker/awx/bin/verify-runtime-contract /usr/local/libexec/awx-docker/verify-runtime-contract
-COPY docker/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
+COPY config/awx/repos/ansible-rsyslog-epel-9.repo /etc/yum.repos.d/ansible-Rsyslog-epel-9.repo
 COPY docker/awx/packages/runtime.rpms /tmp/packages.rpms
 RUN INSTALL_RPMS_ENABLE_NODEJS18=true INSTALL_RPMS_INSTALL_INOTIFY=true \
     /usr/local/libexec/awx-docker/install-rpms /tmp/packages.rpms
@@ -135,7 +160,7 @@ COPY --from=receptor /usr/bin/receptor /usr/bin/receptor
 # AWX's dev startup scripts look for the source tree at this path.
 # Copy it into the image, then remove Git history.
 COPY --from=ui-builder /tmp/src /awx_devel
-RUN rm -rf /awx_devel/.git
+RUN rm -rf /awx_devel/.git /awx_devel/awx/ui/src/.git
 
 # ----- Licenses and source info ----------------------------------------------
 
