@@ -2,27 +2,6 @@ name: Build
 
 "on":
   workflow_dispatch:
-    inputs:
-      upstream_ref:
-        description: AWX branch, tag, or commit to build
-        required: true
-        default: devel
-      image_name:
-        description: Local image name passed to Dagger
-        required: true
-        default: awx-devel
-      image_tag:
-        description: Local image tag passed to Dagger
-        required: true
-        default: devel
-      awx_ui_ref:
-        description: ansible-ui tag or commit to build
-        required: true
-        default: v2.4.313
-      awx_ui_delivery:
-        description: AWX UI delivery mode, embedded or sideloaded
-        required: true
-        default: embedded
 
 permissions:
   contents: read
@@ -41,8 +20,3 @@ jobs:
           args: >-
             verify
             --source=.
-            --upstream-ref=${{ inputs.upstream_ref }}
-            --awx-ui-ref=${{ inputs.awx_ui_ref }}
-            --awx-ui-delivery=${{ inputs.awx_ui_delivery }}
-            --image-name=${{ inputs.image_name }}
-            --image-tag=${{ inputs.image_tag }}
